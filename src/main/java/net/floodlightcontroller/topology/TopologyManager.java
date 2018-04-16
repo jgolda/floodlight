@@ -731,18 +731,14 @@ ITopologyManagerBackend, ILinkDiscoveryListener, IOFMessageListener {
         if (ports == null) return;
         if (packetData == null || packetData.length <= 0) return;
 
-        //OFPacketOut po = (OFPacketOut) floodlightProvider.getOFMessageFactory().getMessage(OFType.PACKET_OUT);
         OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
         List<OFAction> actions = new ArrayList<OFAction>();
         for(OFPort p: ports) {
-            //actions.add(new OFActionOutput(p, (short) 0));
             actions.add(sw.getOFFactory().actions().output(p, 0));
         }
 
         // set actions
         pob.setActions(actions);
-        // set action length
-        //po.setActionsLength((short) (OFActionOutput.MINIMUM_LENGTH * ports.size()));
         // set buffer-id to BUFFER_ID_NONE
         pob.setBufferId(OFBufferId.NO_BUFFER);
         // set in-port to OFPP_NONE
@@ -751,12 +747,6 @@ ITopologyManagerBackend, ILinkDiscoveryListener, IOFMessageListener {
         // set packet data
         pob.setData(packetData);
 
-        // compute and set packet length.
-        //short poLength = (short)(OFPacketOut.MINIMUM_LENGTH + po.getActionsLength() + packetData.length);
-
-        //po.setLength(poLength);
-
-        //ctrIncoming.updatePktOutFMCounterStore(sw, po);
         if (log.isTraceEnabled()) {
             log.trace("write broadcast packet on switch-id={} " +
                     "interaces={} packet-data={} packet-out={}",
@@ -924,13 +914,6 @@ ITopologyManagerBackend, ILinkDiscoveryListener, IOFMessageListener {
     }
 
     protected void addOrUpdateSwitch(DatapathId sw) {
-        /*TODO react appropriately
-
-		addSwitch(sw);
-		for (OFPortDesc p : switchService.getSwitch(sw).getPorts()) {
-			addPortToSwitch(sw, p.getPortNo());
-		}
-         */
         return;
     }
 
