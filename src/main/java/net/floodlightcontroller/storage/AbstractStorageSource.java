@@ -29,6 +29,8 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
@@ -189,6 +191,15 @@ implements IStorageSourceService, IFloodlightModule {
 			objectList.add(object);
 		}
 		return objectList.toArray();
+	}
+
+	@Override
+	public <RETURN_TYPE> List<RETURN_TYPE> executeQuery(String tableName, String[] columnNames, IPredicate predicate,
+												 RowOrdering ordering, RowMapper<RETURN_TYPE> rowMapper) {
+		IResultSet resultSet = executeQuery(tableName, columnNames, predicate, ordering);
+		return StreamSupport.stream(resultSet.spliterator(), false)
+				.map(rowMapper::mapRow)
+				.collect(Collectors.toList());
 	}
 
 	@Override

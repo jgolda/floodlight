@@ -17,21 +17,7 @@
 
 package net.floodlightcontroller.devicemanager.internal;
 
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -56,13 +42,7 @@ import net.floodlightcontroller.core.util.ListenerDispatcher;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
-import net.floodlightcontroller.devicemanager.IDevice;
-import net.floodlightcontroller.devicemanager.IDeviceService;
-import net.floodlightcontroller.devicemanager.IEntityClass;
-import net.floodlightcontroller.devicemanager.IEntityClassListener;
-import net.floodlightcontroller.devicemanager.IEntityClassifierService;
-import net.floodlightcontroller.devicemanager.IDeviceListener;
-import net.floodlightcontroller.devicemanager.SwitchPort;
+import net.floodlightcontroller.devicemanager.*;
 import net.floodlightcontroller.devicemanager.internal.DeviceSyncRepresentation.SyncEntity;
 import net.floodlightcontroller.devicemanager.web.DeviceRoutable;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LDUpdate;
@@ -121,6 +101,8 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 	private ISyncService syncService;
 	private IStoreClient<String, DeviceSyncRepresentation> storeClient;
 	private DeviceSyncManager deviceSyncManager;
+
+	private Map<DatapathId, Set<OFPort>> virtualInterfaceAttachmentPoints = new HashMap<>();
 
 	/**
 	 * Debug Counters
@@ -210,6 +192,10 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 	 * This is the primary entity index that contains all entities
 	 */
 	protected DeviceUniqueIndex primaryIndex;
+
+	private DeviceUniqueIndex ipAddressIndex;
+
+	private IEntityClassifierService ipAddressClassifier;
 
 	/**
 	 * This stores secondary indices over the fields in the devices
@@ -853,6 +839,8 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 			throws FloodlightModuleException {
 		isMaster = (floodlightProvider.getRole() == HARole.ACTIVE);
 		primaryIndex = new DeviceUniqueIndex(entityClassifier.getKeyFields());
+		ipAddressClassifier = new IpAddressEntityClassifier();
+		ipAddressIndex = new DeviceUniqueIndex(ipAddressClassifier.getKeyFields());
 		secondaryIndexMap = new HashMap<EnumSet<DeviceField>, DeviceIndex>();
 
 		deviceMap = new ConcurrentHashMap<Long, Device>();
@@ -864,7 +852,6 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		floodlightProvider.addHAListener(this.haListenerDelegate);
 		if (topology != null)
 			topology.addListener(this);
-		entityClassifier.addListener(this);
 
 		ScheduledExecutorService ses = threadPool.getScheduledExecutor();
 		Runnable ecr = new Runnable() {
@@ -1164,13 +1151,25 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 	 */
 	public boolean isValidAttachmentPoint(DatapathId switchDPID,
 			OFPort switchPort) {
-		if (topology.isAttachmentPointPort(switchDPID, switchPort) == false)
+		if ( isVirtualInterfaceAttachmentPoint(switchDPID, switchPort) ) {
+			return true;
+		}
+		if (topology.isAttachmentPointPort(switchDPID, switchPort) == false) {
+			logger.info("-------- " + switchDPID + ", " + switchPort + " NIE JEST WALIDNYM attachment pointem  1");
 			return false;
+		}
 
-		if (suppressAPs.contains(new SwitchPort(switchDPID, switchPort)))
+		if (suppressAPs.contains(new SwitchPort(switchDPID, switchPort))) {
+			logger.info("-------- " + switchDPID + ", " + switchPort + " NIE JEST WALIDNYM attachment pointem  2");
 			return false;
+		}
 
+		logger.info("-------- " + switchDPID + ", " + switchPort + " jest walidnym attachment pointem");
 		return true;
+	}
+
+	private boolean isVirtualInterfaceAttachmentPoint(DatapathId switchDPID, OFPort switchPort) {
+		return virtualInterfaceAttachmentPoints.getOrDefault(switchDPID, Collections.emptySet()).contains(switchPort);
 	}
 
 	/**
@@ -1343,6 +1342,17 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		return deviceMap.get(deviceKey);
 	}
 
+	@Override
+	public Optional<IDevice> findByIpAddress(IPv4Address ip) {
+		Entity entity = new Entity(MacAddress.NONE, VlanVid.ZERO, ip, IPv6Address.NONE, DatapathId.NONE, OFPort.ANY, new Date());
+		Long key = ipAddressIndex.findByEntity(entity);
+		if (key == null) {
+			logger.info("entity with ip: " + ip + " not found");
+			return Optional.empty();
+		}
+		return Optional.ofNullable(deviceMap.get(key));
+	}
+
 	/**
 	 * Get a destination device using entity fields that corresponds with
 	 * the given source device.  The source device is important since
@@ -1380,18 +1390,31 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		return deviceMap.get(deviceKey);
 	}
 
-	/**
-	 * Look up a {@link Device} within a particular entity class based on
-	 * the provided {@link Entity}.
-	 * @param clazz the entity class to search for the entity
-	 * @param entity the entity to search for
-	 * @return The {@link Device} object if found
-    private Device findDeviceInClassByEntity(IEntityClass clazz,
-                                               Entity entity) {
-        // XXX - TODO
-        throw new UnsupportedOperationException();
-    }
-	 */
+	@Override
+	public Device registerDevice(Entity entity) {
+		Long deviceKey = computeEntityKey(entity);
+		IEntityClass entityClass = entityClassifier.classifyEntity(entity);
+		registerAttachmentPoint(entity);
+		Device device = new Device(this, deviceKey, entity, entityClass);
+		primaryIndex.updateIndex(device, deviceKey);
+		ipAddressIndex.updateIndex(device, deviceKey);
+		return deviceMap.put(deviceKey, device);
+	}
+
+	private void registerAttachmentPoint(Entity entity) {
+		Set<OFPort> attachmentPoints = virtualInterfaceAttachmentPoints.getOrDefault(entity.getSwitchDPID(), new HashSet<>());
+		attachmentPoints.add(entity.getSwitchPort());
+		virtualInterfaceAttachmentPoints.put(entity.getSwitchDPID(), attachmentPoints);
+	}
+
+	private Long computeEntityKey(Entity entity) {
+		Long existingDeviceKey = primaryIndex.findByEntity(entity);
+		if (existingDeviceKey != null) {
+			return existingDeviceKey;
+		} else {
+			return deviceKeyCounter.getAndIncrement();
+		}
+	}
 
 	/**
 	 * Look up a {@link Device} based on the provided {@link Entity}.  Also
@@ -1481,7 +1504,9 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 
 
 				// Add the new device to the primary map with a simple put
-				deviceMap.put(deviceKey, device);
+				if (!device.isVirtualInterface()) {
+					deviceMap.put(deviceKey, device);
+				}
 				// update indices
 				if (!updateIndices(device, deviceKey)) {
 					if (deleteQueue == null)
@@ -1544,12 +1569,14 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 				EnumSet<DeviceField> changedFields = findChangedFields(device, entity);
 
 				// update the device map with a replace call
-				boolean res = deviceMap.replace(deviceKey, device, newDevice);
-				// If replace returns false, restart the process from the
-				// beginning (this implies another thread concurrently
-				// modified this Device).
-				if (!res)
-					continue;
+				if (! device.isVirtualInterface()) {
+					boolean res = deviceMap.replace(deviceKey, device, newDevice);
+					// If replace returns false, restart the process from the
+					// beginning (this implies another thread concurrently
+					// modified this Device).
+					if ( !res )
+						continue;
+				}
 
 				device = newDevice;
 				// update indices
@@ -1575,25 +1602,9 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 			// Update attachment point (will only be hit if the device
 			// already existed and no concurrent modification)
 			if (entity.hasSwitchPort()) {
-				boolean moved = device.updateAttachmentPoint(entity.getSwitchDPID(),
+				device.updateAttachmentPoint(entity.getSwitchDPID(),
 						entity.getSwitchPort(),
 						entity.getLastSeenTimestamp());
-				if (moved) {
-					// we count device moved events in sendDeviceMovedNotification()
-					// TODO remove this. It's now done in the event handler as a result of the update above... sendDeviceMovedNotification(device);
-					if (logger.isTraceEnabled()) {
-						logger.trace("Device moved: attachment points {}," +
-								"entities {}", device.attachmentPoints,
-								device.entities);
-					}
-				} else {
-					if (logger.isTraceEnabled()) {
-						logger.trace("Device attachment point updated: " +
-								"attachment points {}," +
-								"entities {}", device.attachmentPoints,
-								device.entities);
-					}
-				}
 			}
 			break;
 		}
@@ -1803,6 +1814,9 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		 if (!primaryIndex.updateIndex(device, deviceKey)) {
 			 return false;
 		 }
+		 if (!ipAddressIndex.updateIndex(device, deviceKey)) {
+		 	return false;
+		 }
 		 IEntityClass entityClass = device.getEntityClass();
 		 ClassState classState = getClassState(entityClass);
 
@@ -1876,6 +1890,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 				 }
 
 				 if (toKeep.size() > 0) {
+				 	logger.info("---------------------- allocate device w DeviceManagerImpl");
 					 Device newDevice = allocateDevice(d.getDeviceKey(),
 							 d.getDHCPClientName(),
 							 d.oldAPs,
@@ -1966,10 +1981,12 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 			 this.removeEntity(entity, device.getEntityClass(),
 					 device.getDeviceKey(), emptyToKeep);
 		 }
-		 if (!deviceMap.remove(device.getDeviceKey(), device)) {
-			 if (logger.isDebugEnabled())
-				 logger.debug("device map does not have this device -" +
-						 device.toString());
+		 if (!device.isVirtualInterface()) {
+			 if ( !deviceMap.remove(device.getDeviceKey(), device) ) {
+				 if ( logger.isDebugEnabled() )
+					 logger.debug("device map does not have this device -" +
+							 device.toString());
+			 }
 		 }
 	 }
 

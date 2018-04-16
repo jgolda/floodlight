@@ -105,6 +105,9 @@ public interface IStorageSourceService extends IFloodlightService {
      */
     Object[] executeQuery(String tableName, String[] columnNames, IPredicate predicate,
             RowOrdering ordering, IRowMapper rowMapper);
+
+    <RETURN_TYPE> List<RETURN_TYPE> executeQuery(String tableName, String[] columnNames, IPredicate predicate,
+                          RowOrdering ordering, RowMapper<RETURN_TYPE> rowMapper);
     
     /** Insert a new row in the table with the given column data.
      * If the primary key is the default value of "id" and is not specified in the

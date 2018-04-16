@@ -22,7 +22,9 @@ package net.floodlightcontroller.storage;
  * This is based on the Spring JDBC support.
  * 
  * @author rob
+ * @deprecated use {@link RowMapper}
  */
+@Deprecated
 public interface IRowMapper {
 
     /** This method must be implemented by the client of the storage API

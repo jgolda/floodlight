@@ -287,8 +287,10 @@ ITopologyManagerBackend, ILinkDiscoveryListener, IOFMessageListener {
         // If the switch port is 'tun-bsn' port, it is not
         // an attachment point port, irrespective of whether
         // a link is found through it or not.
-        if (linkDiscoveryService.isTunnelPort(switchid, port))
+        if (linkDiscoveryService.isTunnelPort(switchid, port)) {
+            log.info("------ linkDiscoveryService");
             return false;
+        }
 
         TopologyInstance ti = getCurrentInstance();
 

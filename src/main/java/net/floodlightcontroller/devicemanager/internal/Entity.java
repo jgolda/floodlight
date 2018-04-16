@@ -100,6 +100,8 @@ public class Entity implements Comparable<Entity> {
      */
     protected Date lastSeenTimestamp;
 
+    private boolean virtualInterface = false;
+
     /**
      * The time between {@link Entity#activeSince} and 
      * {@link Entity#lastSeenTimestamp} is a period of activity for this
@@ -127,7 +129,7 @@ public class Entity implements Comparable<Entity> {
      */
     public Entity(@Nonnull MacAddress macAddress, VlanVid vlan, @Nonnull IPv4Address ipv4Address, 
     		@Nonnull IPv6Address ipv6Address, @Nonnull DatapathId switchDPID, @Nonnull OFPort switchPort, 
-                  @Nonnull Date lastSeenTimestamp) {
+                  @Nonnull Date lastSeenTimestamp, Boolean virtualInterface) {
     	if (macAddress == null) {
     		throw new IllegalArgumentException("MAC address cannot be null. Try MacAddress.NONE if intention is 'no MAC'");
     	}
@@ -147,6 +149,9 @@ public class Entity implements Comparable<Entity> {
     	if (lastSeenTimestamp == null) {
     		throw new IllegalArgumentException("Last seen time stamp cannot be null. Try Entity.NO_DATE if intention is 'no time'");
     	}
+    	if ( virtualInterface != null) {
+    	    this.virtualInterface = virtualInterface;
+        }
     	
         this.macAddress = macAddress;
         this.ipv4Address = ipv4Address;
@@ -156,6 +161,12 @@ public class Entity implements Comparable<Entity> {
         this.switchPort = switchPort;
         this.lastSeenTimestamp = lastSeenTimestamp;
         this.activeSince = lastSeenTimestamp;
+    }
+
+    public Entity(@Nonnull MacAddress macAddress, VlanVid vlan, @Nonnull IPv4Address ipv4Address,
+                  @Nonnull IPv6Address ipv6Address, @Nonnull DatapathId switchDPID, @Nonnull OFPort switchPort,
+                  @Nonnull Date lastSeenTimestamp) {
+        this(macAddress, vlan, ipv4Address, ipv6Address, switchDPID, switchPort, lastSeenTimestamp, false);
     }
 
     // ***************
@@ -191,7 +202,11 @@ public class Entity implements Comparable<Entity> {
     public OFPort getSwitchPort() {
         return switchPort;
     }
-    
+
+    public boolean isVirtualInterface() {
+        return virtualInterface;
+    }
+
     @JsonIgnore
     public boolean hasSwitchPort() {
         return (switchDPID != null && !switchDPID.equals(DatapathId.NONE) && switchPort != null && !switchPort.equals(OFPort.ZERO));

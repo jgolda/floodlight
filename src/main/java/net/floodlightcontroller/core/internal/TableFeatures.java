@@ -430,7 +430,7 @@ public class TableFeatures {
 	@Override
 	public String toString() {
 		return "TableFeatures [TableName=" + tableName + ", TableId=" + tableId
-				+ ", Config=" + config + ", MaxEntries=" + maxEntries 
+				+ ", Config=" + config + ", MaxEntries=" + maxEntries
 				+ ", MetadataMatch=" + metadataMatch + ", MetadataWrite=" + metadataWrite
 				+ ", ApplyActions=" + aa + ", ApplyActionsMiss=" + aam + ", ApplySetField=" + asf
 				+ ", ApplySetFieldMiss=" + asfm + ", Experimenter=" + e + ", ExperimenterMiss=" + em + ", Instructions=" + i

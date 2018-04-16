@@ -68,6 +68,7 @@ public class Device implements IDevice {
 	protected final String macAddressString;
 	// the vlan Ids from the entities of this device
 	protected final VlanVid[] vlanIds;
+	private boolean virtualInterface;
 	protected volatile String dhcpClientName;
 
 	/**
@@ -98,8 +99,10 @@ public class Device implements IDevice {
 	 */
 	public Device(DeviceManagerImpl deviceManager, Long deviceKey,
 			Entity entity, IEntityClass entityClass) {
+		log.info("Device(malo paramow)");
 		this.deviceManager = deviceManager;
 		this.deviceKey = deviceKey;
+		this.virtualInterface = entity.isVirtualInterface();
 		this.entities = new Entity[] { entity };
 		this.macAddressString = entity.getMacAddress().toString();
 		this.entityClass = entityClass;
@@ -116,6 +119,7 @@ public class Device implements IDevice {
 
 			if (deviceManager.isValidAttachmentPoint(sw, port)) {
 				AttachmentPoint ap;
+				log.info(entity.getIpv4Address() + " valid attachment point");
 				ap = new AttachmentPoint(sw, port,
 						entity.getLastSeenTimestamp());
 				this.attachmentPoints = new ArrayList<AttachmentPoint>();
@@ -141,6 +145,7 @@ public class Device implements IDevice {
 			String dhcpClientName, Collection<AttachmentPoint> oldAPs,
 			Collection<AttachmentPoint> attachmentPoints,
 			Collection<Entity> entities, IEntityClass entityClass) {
+		log.info("Device(duzo paramow)");
 		this.deviceManager = deviceManager;
 		this.deviceKey = deviceKey;
 		this.dhcpClientName = dhcpClientName;
@@ -386,6 +391,9 @@ public class Device implements IDevice {
 	 * @return
 	 */
 	protected boolean updateAttachmentPoint() {
+		if (virtualInterface) {
+			return false;
+		}
 		boolean moved = false;
 		this.oldAPs = attachmentPoints;
 		if (attachmentPoints == null || attachmentPoints.isEmpty()) {
@@ -429,6 +437,9 @@ public class Device implements IDevice {
 	 */
 	protected boolean updateAttachmentPoint(DatapathId sw, OFPort port,
 			Date lastSeen) {
+		if (virtualInterface) {
+			return false;
+		}
 		ITopologyService topology = deviceManager.topology;
 		List<AttachmentPoint> oldAPList;
 		List<AttachmentPoint> apList;
@@ -519,86 +530,6 @@ public class Device implements IDevice {
 			oldAPList.add(newAP);
 			this.oldAPs = oldAPList;
 		}
-		return false;
-	}
-
-	/**
-	 * Delete (sw,port) from the list of list of attachment points and oldAPs.
-	 * 
-	 * @param sw
-	 * @param port
-	 * @return
-	 */
-	public boolean deleteAttachmentPoint(DatapathId sw, OFPort port) {
-		AttachmentPoint ap = new AttachmentPoint(sw, port, new Date(0));
-
-		if (this.oldAPs != null) {
-			ArrayList<AttachmentPoint> apList = new ArrayList<AttachmentPoint>();
-			apList.addAll(this.oldAPs);
-			int index = apList.indexOf(ap);
-			if (index > 0) {
-				apList.remove(index);
-				this.oldAPs = apList;
-			}
-		}
-
-		if (this.attachmentPoints != null) {
-			ArrayList<AttachmentPoint> apList = new ArrayList<AttachmentPoint>();
-			apList.addAll(this.attachmentPoints);
-			int index = apList.indexOf(ap);
-			if (index > 0) {
-				apList.remove(index);
-				this.attachmentPoints = apList;
-				return true;
-			}
-		}
-		return false;
-	}
-
-	public boolean deleteAttachmentPoint(DatapathId sw) {
-		boolean deletedFlag;
-		ArrayList<AttachmentPoint> apList;
-		ArrayList<AttachmentPoint> modifiedList;
-
-		// Delete the APs on switch sw in oldAPs.
-		deletedFlag = false;
-		apList = new ArrayList<AttachmentPoint>();
-		if (this.oldAPs != null)
-			apList.addAll(this.oldAPs);
-		modifiedList = new ArrayList<AttachmentPoint>();
-
-		for (AttachmentPoint ap : apList) {
-			if (ap.getSw().equals(sw)) {
-				deletedFlag = true;
-			} else {
-				modifiedList.add(ap);
-			}
-		}
-
-		if (deletedFlag) {
-			this.oldAPs = modifiedList;
-		}
-
-		// Delete the APs on switch sw in attachmentPoints.
-		deletedFlag = false;
-		apList = new ArrayList<AttachmentPoint>();
-		if (this.attachmentPoints != null)
-			apList.addAll(this.attachmentPoints);
-		modifiedList = new ArrayList<AttachmentPoint>();
-
-		for (AttachmentPoint ap : apList) {
-			if (ap.getSw().equals(sw)) {
-				deletedFlag = true;
-			} else {
-				modifiedList.add(ap);
-			}
-		}
-
-		if (deletedFlag) {
-			this.attachmentPoints = modifiedList;
-			return true;
-		}
-
 		return false;
 	}
 
@@ -816,6 +747,11 @@ public class Device implements IDevice {
 	@Override
 	public IEntityClass getEntityClass() {
 		return entityClass;
+	}
+
+	@Override
+	public boolean isVirtualInterface() {
+		return virtualInterface;
 	}
 
 	public Entity[] getEntities() {
