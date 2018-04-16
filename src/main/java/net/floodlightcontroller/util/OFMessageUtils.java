@@ -138,6 +138,17 @@ public class OFMessageUtils {
 	}
 
 	/**
+	 *  Use this method to determine the ingress port of a packet
+	 */
+	public static OFPort determinePort(OFPacketIn packetInMessage) {
+		if ( packetInMessage.getVersion().compareTo(OFVersion.OF_12) < 0 ) {
+			return packetInMessage.getInPort();
+		} else {
+			return packetInMessage.getMatch().get(MatchField.IN_PORT);
+		}
+	}
+
+	/**
 	 * Get the VLAN on which this packet-in message was received.
 	 * @param pi, the OFPacketIn
 	 * @return the VLAN
