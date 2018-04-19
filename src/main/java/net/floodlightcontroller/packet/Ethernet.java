@@ -463,9 +463,9 @@ public class Ethernet extends BasePacket {
         else if (pkt instanceof ICMP) {
             ICMP icmp = (ICMP) pkt;
             sb.append("\nicmp_type: ");
-            sb.append(icmp.getIcmpType());
+            sb.append(icmp.getType().value());
             sb.append("\nicmp_code: ");
-            sb.append(icmp.getIcmpCode());
+            sb.append(icmp.getCode().value());
         }
         else if (pkt instanceof IPv4) {
             IPv4 p = (IPv4) pkt;

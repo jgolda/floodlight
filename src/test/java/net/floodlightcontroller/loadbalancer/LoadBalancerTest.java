@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import net.floodlightcontroller.packet.*;
 import org.easymock.Capture;
 import org.easymock.CaptureType;
 import org.easymock.EasyMock;
@@ -74,11 +75,6 @@ import net.floodlightcontroller.devicemanager.IEntityClassifierService;
 import net.floodlightcontroller.devicemanager.internal.DefaultEntityClassifier;
 import net.floodlightcontroller.devicemanager.test.MockDeviceManager;
 import net.floodlightcontroller.loadbalancer.LoadBalancer.IPClient;
-import net.floodlightcontroller.packet.ARP;
-import net.floodlightcontroller.packet.Ethernet;
-import net.floodlightcontroller.packet.ICMP;
-import net.floodlightcontroller.packet.IPacket;
-import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.restserver.RestApiServer;
 import net.floodlightcontroller.routing.IRoutingService;
@@ -606,8 +602,8 @@ public class LoadBalancerTest extends FloodlightTestCase {
 						.setDestinationAddress("10.0.0.100")
 						.setProtocol(IpProtocol.ICMP)
 						.setPayload(new ICMP()
-								.setIcmpCode((byte) 0)
-								.setIcmpType((byte) 0)));
+								.setCode(ICMP.Code.ECHO_REPLY)
+						));
 
 		icmpPacket1Serialized = icmpPacket1.serialize();
 
@@ -629,8 +625,8 @@ public class LoadBalancerTest extends FloodlightTestCase {
 						.setDestinationAddress("10.0.0.100")
 						.setProtocol(IpProtocol.ICMP)
 						.setPayload(new ICMP()
-								.setIcmpCode((byte) 0)
-								.setIcmpType((byte) 0)));
+								.setCode(ICMP.Code.ECHO_REPLY)
+						));
 
 		icmpPacket2Serialized = icmpPacket2.serialize();
 

@@ -18,6 +18,7 @@
 package net.floodlightcontroller.packet;
 
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -28,55 +29,109 @@ import org.projectfloodlight.openflow.types.IpProtocol;
  * @author shudong.zhou@bigswitch.com
  */
 public class ICMP extends BasePacket {
-    protected byte icmpType;
-    protected byte icmpCode;
+
+    public enum Type {
+        ECHO_REPLY(0),
+        DESTINATION_UNREACHABLE(3, 4),
+        ECHO_REQUEST(8),
+        TIME_EXCEEDED(11, 4),
+
+        UNHANDLED(-127);
+
+        private final byte value;
+
+        private final short numberOfPaddingBytes;
+
+        private static final Map<Byte, Type> types = Collections.unmodifiableMap(setupEnumMap());
+
+        Type(int value) {
+            this(value, 0);
+        }
+
+        Type(int value, int numberOfPaddingBytes) {
+            this.value = (byte) value;
+            this.numberOfPaddingBytes = (short) numberOfPaddingBytes;
+        }
+
+        static Type from(byte value) {
+            return types.getOrDefault(value, UNHANDLED);
+        }
+
+        public byte value() {
+            return value;
+        }
+
+        public short numberOfPaddingBytes() {
+            return numberOfPaddingBytes;
+        }
+
+        private static Map<Byte, Type> setupEnumMap() {
+            HashMap<Byte, Type> result = new HashMap<>();
+            for ( Type type : Type.values() ) {
+                result.put(type.value(), type);
+            }
+            return result;
+        }
+    }
+
+    public enum Code {
+        ECHO_REPLY(Type.ECHO_REPLY, 0),
+        ECHO_REQUEST(Type.ECHO_REQUEST, 0),
+        TTL_EXPIRED(Type.TIME_EXCEEDED, 0),
+        FRAGMENT_REASSEMBLY_TIME_EXCEEDED(Type.TIME_EXCEEDED, 1),
+
+        UNHANDLED(Type.UNHANDLED, -127);
+
+        private final Type type;
+
+        private final byte value;
+
+        private static final Map<Short, Code> codes = Collections.unmodifiableMap(setupEnumMap());
+
+        Code(Type type, int value) {
+            this.type = type;
+            this.value = (byte) value;
+        }
+
+        public static Code from(Type type, byte value) {
+            return codes.getOrDefault(buildMapKey(type, value), UNHANDLED);
+        }
+
+        public Type getType() {
+            return type;
+        }
+
+        public byte value() {
+            return value;
+        }
+
+        private static Map<Short, Code> setupEnumMap() {
+            HashMap<Short, Code> result = new HashMap<>();
+            for ( Code code : Code.values() ) {
+                result.put(buildMapKey(code.getType(), code.value()), code);
+            }
+            return result;
+        }
+
+        private static Short buildMapKey(Type type, byte code) {
+            return (short) (((short) (type.value() << 8)) + code);
+        }
+    }
+
+    private Code code;
+
     protected short checksum;
 
-    // The value is the number of bytes of padding
-    public static final Map<Byte, Short> paddingMap;
-
-    public static final byte ECHO_REPLY = 0x0;
-    public static final byte ECHO_REQUEST = 0x8;
-    public static final byte TIME_EXCEEDED = 0xB;
-    public static final byte DESTINATION_UNREACHABLE = 0x3;
-
-    public static final byte CODE_PORT_UNREACHABLE = 0x3;
-
-    static {
-        paddingMap = new HashMap<Byte, Short>();
-        ICMP.paddingMap.put(ICMP.ECHO_REPLY, (short) 0);
-        ICMP.paddingMap.put(ICMP.ECHO_REQUEST, (short) 0);
-        ICMP.paddingMap.put(ICMP.TIME_EXCEEDED, (short) 4);
-        ICMP.paddingMap.put(ICMP.DESTINATION_UNREACHABLE, (short) 4);
+    public Type getType() {
+        return code.getType();
     }
 
-    /**
-     * @return the icmpType
-     */
-    public byte getIcmpType() {
-        return icmpType;
+    public Code getCode() {
+        return code;
     }
 
-    /**
-     * @param icmpType to set
-     */
-    public ICMP setIcmpType(byte icmpType) {
-        this.icmpType = icmpType;
-        return this;
-    }
-
-    /**
-     * @return the icmp code
-     */
-    public byte getIcmpCode() {
-        return icmpCode;
-    }
-
-    /**
-     * @param icmpCode code to set
-     */
-    public ICMP setIcmpCode(byte icmpCode) {
-        this.icmpCode = icmpCode;
+    public ICMP setCode(Code code) {
+        this.code = code;
         return this;
     }
 
@@ -103,9 +158,7 @@ public class ICMP extends BasePacket {
      */
     @Override
     public byte[] serialize() {
-        short padding = 0;
-        if (paddingMap.containsKey(this.icmpType))
-            padding = paddingMap.get(this.icmpType);
+        short padding = code.getType().numberOfPaddingBytes();
 
         int length = 4 + padding;
         byte[] payloadData = null;
@@ -118,9 +171,9 @@ public class ICMP extends BasePacket {
         byte[] data = new byte[length];
         ByteBuffer bb = ByteBuffer.wrap(data);
 
-        bb.put(this.icmpType);
-        bb.put(this.icmpCode);
-        bb.putShort(this.checksum);
+        bb.put(code.getType().value());
+        bb.put(code.value());
+        bb.putShort(checksum);
         for (int i = 0; i < padding; i++)
             bb.put((byte) 0);
 
@@ -158,8 +211,8 @@ public class ICMP extends BasePacket {
     public int hashCode() {
         final int prime = 5807;
         int result = super.hashCode();
-        result = prime * result + icmpType;
-        result = prime * result + icmpCode;
+        result = prime * result + code.getType().value();
+        result = prime * result + code.value();
         result = prime * result + checksum;
         return result;
     }
@@ -176,9 +229,9 @@ public class ICMP extends BasePacket {
         if (!(obj instanceof ICMP))
             return false;
         ICMP other = (ICMP) obj;
-        if (icmpType != other.icmpType)
+        if (code.getType() != other.getType())
             return false;
-        if (icmpCode != other.icmpCode)
+        if (code != other.code)
             return false;
         if (checksum != other.checksum)
             return false;
@@ -189,14 +242,11 @@ public class ICMP extends BasePacket {
     public IPacket deserialize(byte[] data, int offset, int length)
             throws PacketParsingException {
         ByteBuffer bb = ByteBuffer.wrap(data, offset, length);
-        this.icmpType = bb.get();
-        this.icmpCode = bb.get();
-        this.checksum = bb.getShort();
+        Type type = Type.from(bb.get());
+        code = Code.from(type, bb.get());
+        checksum = bb.getShort();
 
-        short padding = 0;
-        if (paddingMap.containsKey(this.icmpType))
-            padding = paddingMap.get(this.icmpType);
-
+        short padding = type.numberOfPaddingBytes();
         bb.position(bb.position() + padding);
 
         this.payload = new Data();

@@ -48,8 +48,7 @@ public class ICMPTest {
             .setSourceAddress("192.168.10.231")
             .setDestinationAddress("192.168.10.219")
             .setPayload(new ICMP()
-                            .setIcmpType((byte) 8)
-                            .setIcmpCode((byte) 0)
+                    .setCode(ICMP.Code.ECHO_REQUEST)
                             .setPayload(new Data(new byte[]
                                         {0x76, (byte) 0xf2, 0x0, 0x2, 0x1, 0x1, 0x1}))
                        );
