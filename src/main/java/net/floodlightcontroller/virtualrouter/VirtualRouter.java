@@ -10,6 +10,7 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.packet.*;
 import net.floodlightcontroller.util.OFMessageUtils;
+import net.floodlightcontroller.virtualrouter.store.GatewayStoreService;
 import org.projectfloodlight.openflow.protocol.*;
 import org.projectfloodlight.openflow.types.*;
 import org.slf4j.Logger;
@@ -18,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.projectfloodlight.openflow.protocol.OFType.PACKET_IN;
 
@@ -25,10 +27,9 @@ public class VirtualRouter implements IFloodlightModule, IVirtualRouter, IOFMess
 
     private static final Logger logger = LoggerFactory.getLogger(VirtualRouter.class);
 
-    private static final IPv4Address dummyIp = IPv4Address.of("192.168.124.1");
-    private static final MacAddress dummyMac = MacAddress.of(98765412738123413L);
-
     private IFloodlightProviderService floodlightProvider;
+
+    private GatewayStoreService gatewayStore;
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
@@ -39,6 +40,7 @@ public class VirtualRouter implements IFloodlightModule, IVirtualRouter, IOFMess
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         logger.info("Initializing virtual router module");
         floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
+        gatewayStore = context.getServiceImpl(GatewayStoreService.class);
     }
 
     @Override
@@ -48,7 +50,7 @@ public class VirtualRouter implements IFloodlightModule, IVirtualRouter, IOFMess
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-        return Collections.emptyList();
+        return Collections.singleton(GatewayStoreService.class);
     }
 
     @Override
@@ -68,9 +70,11 @@ public class VirtualRouter implements IFloodlightModule, IVirtualRouter, IOFMess
                 logger.debug(String.format("ARP Operation: %s", inputArpRequest.getOpCode().toString()));
                 String message = String.format("%s is asking for %s mac address. Source mac address: %s, arrived target mac address: %s", inputArpRequest.getSenderProtocolAddress(), inputArpRequest.getTargetProtocolAddress(), inputArpRequest.getSenderHardwareAddress(), inputArpRequest.getTargetHardwareAddress());
                 logger.debug(message);
-                if ( dummyIp.equals(inputArpRequest.getTargetProtocolAddress()) ) {
-                    logger.debug(String.format("Request for virtual gateway: %s", dummyIp));
-                    OFPacketOut packetOut = createResponse(sw, packetIn, inputEthernetFrame, inputArpRequest);
+                Optional<Gateway> optionalGateway = gatewayStore.getGateway(inputArpRequest.getTargetProtocolAddress());
+                if ( optionalGateway.isPresent()) {
+                    Gateway queriedGateway = optionalGateway.get();
+                    logger.debug(String.format("Request for virtual gateway: %s", queriedGateway.getIpAddress()));
+                    OFPacketOut packetOut = createResponse(sw, packetIn, inputEthernetFrame, inputArpRequest, queriedGateway);
                     sw.write(packetOut);
                     logger.debug("Successfully sent arp response");
                     return Command.STOP;
@@ -81,7 +85,9 @@ public class VirtualRouter implements IFloodlightModule, IVirtualRouter, IOFMess
                     logger.debug("handling icmp packet");
                     ICMP inputIcmpPacket = (ICMP) inputIpPacket.getPayload();
                     logger.debug(inputIpPacket.getSourceAddress() + " is icmping " + inputIpPacket.getDestinationAddress() + ". ICMP type: " + inputIcmpPacket.getType().name() + ", in byte: " + inputIcmpPacket.getType().value() + ". ICMP code: " + inputIcmpPacket.getCode().name() + ", in byte: " + inputIcmpPacket.getCode().value());
-                    if (ICMP.Code.ECHO_REQUEST.equals(inputIcmpPacket.getCode()) && dummyIp.equals(inputIpPacket.getDestinationAddress())) {
+                    Optional<Gateway> optionalGateway = gatewayStore.getGateway(inputIpPacket.getDestinationAddress());
+                    if (ICMP.Code.ECHO_REQUEST.equals(inputIcmpPacket.getCode()) && optionalGateway.isPresent()) {
+                        Gateway queriedGateway = optionalGateway.get();
                         logger.debug("responding to icmp echo request packet");
                         IPacket icmpResponse = new ICMP()
                                 .setCode(ICMP.Code.ECHO_REPLY)
@@ -96,7 +102,7 @@ public class VirtualRouter implements IFloodlightModule, IVirtualRouter, IOFMess
 
                         IPacket ethernetResponse = new Ethernet()
                                 .setDestinationMACAddress(inputEthernetFrame.getSourceMACAddress())
-                                .setSourceMACAddress(dummyMac)
+                                .setSourceMACAddress(queriedGateway.getMacAddress())
                                 .setEtherType(EthType.IPv4)
                                 .setVlanID(inputEthernetFrame.getVlanID())
                                 .setPriorityCode(inputEthernetFrame.getPriorityCode())
@@ -113,9 +119,9 @@ public class VirtualRouter implements IFloodlightModule, IVirtualRouter, IOFMess
         return Command.CONTINUE;
     }
 
-    private OFPacketOut createResponse(IOFSwitch sw, OFPacketIn msg, Ethernet inputEthernetFrame, ARP inputArpRequest) {
-        ARP arpResponse = createArpResponse(inputArpRequest);
-        IPacket response = createResponsePacket(inputEthernetFrame, inputArpRequest, arpResponse);
+    private OFPacketOut createResponse(IOFSwitch sw, OFPacketIn msg, Ethernet inputEthernetFrame, ARP inputArpRequest, Gateway queriedGateway) {
+        ARP arpResponse = createArpResponse(inputArpRequest, queriedGateway);
+        IPacket response = createResponsePacket(inputEthernetFrame, inputArpRequest, arpResponse, queriedGateway);
         return createPacketOut(sw, msg, response);
     }
 
@@ -131,9 +137,9 @@ public class VirtualRouter implements IFloodlightModule, IVirtualRouter, IOFMess
         return arpResponseBuilder.build();
     }
 
-    private IPacket createResponsePacket(Ethernet ethernet, ARP arp, ARP arpResponse) {
+    private IPacket createResponsePacket(Ethernet ethernet, ARP arp, ARP arpResponse, Gateway queriedGateway) {
         return new Ethernet()
-                .setSourceMACAddress(dummyMac)
+                .setSourceMACAddress(queriedGateway.getMacAddress())
                 .setDestinationMACAddress(arp.getSenderHardwareAddress())
                 .setEtherType(EthType.ARP)
                 .setVlanID(ethernet.getVlanID())
@@ -141,13 +147,13 @@ public class VirtualRouter implements IFloodlightModule, IVirtualRouter, IOFMess
                 .setPayload(arpResponse);
     }
 
-    private ARP createArpResponse(ARP inputArpRequest) {
+    private ARP createArpResponse(ARP inputArpRequest, Gateway queriedGateway) {
         return new ARP()
                 .setOpCode(ArpOpcode.REPLY)
                 .setTargetHardwareAddress(inputArpRequest.getSenderHardwareAddress())
                 .setTargetProtocolAddress(inputArpRequest.getSenderProtocolAddress())
-                .setSenderHardwareAddress(dummyMac)
-                .setSenderProtocolAddress(dummyIp)
+                .setSenderHardwareAddress(queriedGateway.getMacAddress())
+                .setSenderProtocolAddress(queriedGateway.getIpAddress())
                 .setHardwareType(ARP.HW_TYPE_ETHERNET)
                 .setProtocolType(ARP.PROTO_TYPE_IP)
                 .setHardwareAddressLength((byte) 6)
