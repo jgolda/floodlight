@@ -75,6 +75,39 @@ public class VirtualRouter implements IFloodlightModule, IVirtualRouter, IOFMess
                     logger.debug("Successfully sent arp response");
                     return Command.STOP;
                 }
+            } else if (inputEthernetFrame.getPayload() instanceof IPv4 ) {
+                IPv4 inputIpPacket = (IPv4) inputEthernetFrame.getPayload();
+                if ( inputIpPacket.getPayload() instanceof ICMP ) {
+                    logger.debug("handling icmp packet");
+                    ICMP inputIcmpPacket = (ICMP) inputIpPacket.getPayload();
+                    logger.debug(inputIpPacket.getSourceAddress() + " is icmping " + inputIpPacket.getDestinationAddress() + ". ICMP type: " + inputIcmpPacket.getType().name() + ", in byte: " + inputIcmpPacket.getType().value() + ". ICMP code: " + inputIcmpPacket.getCode().name() + ", in byte: " + inputIcmpPacket.getCode().value());
+                    if (ICMP.Code.ECHO_REQUEST.equals(inputIcmpPacket.getCode()) && dummyIp.equals(inputIpPacket.getDestinationAddress())) {
+                        logger.debug("responding to icmp echo request packet");
+                        IPacket icmpResponse = new ICMP()
+                                .setCode(ICMP.Code.ECHO_REPLY)
+                                .setPayload(inputIcmpPacket.getPayload());
+
+                        IPacket ipResponse = new IPv4()
+                                .setDestinationAddress(inputIpPacket.getSourceAddress())
+                                .setSourceAddress(inputIpPacket.getDestinationAddress())
+                                .setTtl((byte) 10)
+                                .setProtocol(IpProtocol.ICMP)
+                                .setPayload(icmpResponse);
+
+                        IPacket ethernetResponse = new Ethernet()
+                                .setDestinationMACAddress(inputEthernetFrame.getSourceMACAddress())
+                                .setSourceMACAddress(dummyMac)
+                                .setEtherType(EthType.IPv4)
+                                .setVlanID(inputEthernetFrame.getVlanID())
+                                .setPriorityCode(inputEthernetFrame.getPriorityCode())
+                                .setPayload(ipResponse);
+
+                        OFPacketOut packetOut = createPacketOut(sw, packetIn, ethernetResponse);
+                        sw.write(packetOut);
+                        logger.debug("Successfully sent ICMP response");
+                        return Command.STOP;
+                    }
+                }
             }
         }
         return Command.CONTINUE;
