@@ -1,6 +1,7 @@
 package net.floodlightcontroller.virtualrouter;
 
 import org.apache.commons.lang.StringUtils;
+import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.IPv4AddressWithMask;
 import org.projectfloodlight.openflow.types.MacAddress;
@@ -14,7 +15,7 @@ public class Gateway {
 
     private Long id;
 
-    private String switchId;
+    private DatapathId switchId;
 
     private String portId;
 
@@ -26,7 +27,7 @@ public class Gateway {
 
     private Gateway(GatewayBuilder builder) {
         this.id = builder.id;
-        this.switchId = builder.switchId;
+        this.switchId = DatapathId.of(builder.switchId);
         this.portId = builder.portId;
         this.ipAddress = IPv4Address.of(builder.ipAddress);
         this.networkAddress = buildNetworkAddress(builder);
@@ -49,7 +50,7 @@ public class Gateway {
         return id;
     }
 
-    public String getSwitchId() {
+    public DatapathId getSwitchId() {
         return switchId;
     }
 

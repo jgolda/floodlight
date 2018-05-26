@@ -40,7 +40,7 @@ public class ARPPacketHandler implements PacketHandler {
         logger.debug(String.format("ARP Operation: %s", inputArpRequest.getOpCode().toString()));
         String message = String.format("%s is asking for %s mac address. Source mac address: %s, arrived target mac address: %s", inputArpRequest.getSenderProtocolAddress(), inputArpRequest.getTargetProtocolAddress(), inputArpRequest.getSenderHardwareAddress(), inputArpRequest.getTargetHardwareAddress());
         logger.debug(message);
-        Optional<Gateway> optionalGateway = gatewayStore.getGateway(inputArpRequest.getTargetProtocolAddress());
+        Optional<Gateway> optionalGateway = gatewayStore.getGateway(inputArpRequest.getTargetProtocolAddress(), sw.getId());
         if ( optionalGateway.isPresent()) {
             Gateway queriedGateway = optionalGateway.get();
             logger.debug(String.format("Request for virtual gateway: %s", queriedGateway.getIpAddress()));

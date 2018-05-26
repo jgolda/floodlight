@@ -1,9 +1,7 @@
 package net.floodlightcontroller.virtualrouter;
 
-import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProviderService;
-import net.floodlightcontroller.core.IOFMessageListener;
-import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.*;
+import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -15,10 +13,13 @@ import net.floodlightcontroller.virtualrouter.handlers.NullHandler;
 import net.floodlightcontroller.virtualrouter.handlers.PacketHandler;
 import net.floodlightcontroller.virtualrouter.store.gateway.GatewayStoreService;
 import org.projectfloodlight.openflow.protocol.*;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.types.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.projectfloodlight.openflow.protocol.OFType.PACKET_IN;
 
@@ -31,6 +32,7 @@ public class VirtualRouter implements IFloodlightModule, IVirtualRouter, IOFMess
     private GatewayStoreService gatewayStore;
 
     private Map<String, PacketHandler> PACKET_HANDLERS = new HashMap<>();
+    private IOFSwitchService switchService;
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
@@ -42,7 +44,90 @@ public class VirtualRouter implements IFloodlightModule, IVirtualRouter, IOFMess
         logger.info("Initializing virtual router module");
         floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
         gatewayStore = context.getServiceImpl(GatewayStoreService.class);
+        switchService = context.getServiceImpl(IOFSwitchService.class);
         buildHandlerMap();
+        pushForwardingRulesForDirectlyAttachedNetworks();
+    }
+
+    private void pushForwardingRulesForDirectlyAttachedNetworks() {
+        // dummy implementation
+//        Set<DatapathId> switchIds = switchService.getAllSwitchDpids();
+//        List<DatapathId> switchesWithDefinedGateways = switchIds.stream()
+//                .filter(datapath -> gatewayStore.existGateway(datapath))
+//                // TODO: [jgolda] przefiltrować po regułach routingu. teraz jest dummy
+//                .collect(Collectors.toList());
+//        for ( DatapathId switchId : switchesWithDefinedGateways ) {
+//            IOFSwitch aSwitch = switchService.getSwitch(switchId);
+//            aSwitch.getOFFactory()
+//        }
+
+        switchService.addOFSwitchListener(new IOFSwitchListener() {
+            @Override
+            public void switchAdded(DatapathId switchId) {
+                DatapathId expectedDatapathId = DatapathId.of("00:00:08:00:27:99:00:34");
+                if (expectedDatapathId.equals(switchId)) {
+                    IOFSwitch aSwitch = switchService.getSwitch(expectedDatapathId);
+                    TableId firstTable = aSwitch.getTables().iterator().next();
+                    OFFactory ofFactory = aSwitch.getOFFactory();
+                    OFPort firstOutputPort = OFPort.of(2);
+                    OFFlowAdd add = ofFactory.buildFlowAdd()
+                            .setTableId(firstTable)
+                            .setPriority(1)
+                            .setMatch(ofFactory.buildMatch()
+                                    .setExact(MatchField.ETH_TYPE, EthType.IPv4)
+                                    .setExact(MatchField.IPV4_DST, IPv4Address.of("192.168.122.105"))
+                                    .build()
+                            )
+                            .setActions(Arrays.asList(
+                                    ofFactory.actions().output(firstOutputPort, 2048)
+                            ))
+                            .build();
+
+                    aSwitch.write(add);
+
+                    OFPort secondOutputPort = OFPort.of(3);
+                    OFFlowAdd add2 = ofFactory.buildFlowAdd()
+                            .setTableId(firstTable)
+                            .setPriority(2)
+                            .setMatch(ofFactory.buildMatch()
+                                    .setExact(MatchField.ETH_TYPE, EthType.IPv4)
+                                    .setExact(MatchField.IPV4_DST, IPv4Address.of("192.168.124.115"))
+                                    .build()
+                            )
+                            .setActions(Arrays.asList(
+                                    ofFactory.actions().output(secondOutputPort, 2048)
+                            ))
+                            .build();
+
+                    aSwitch.write(add2);
+                }
+            }
+
+            @Override
+            public void switchRemoved(DatapathId switchId) {
+
+            }
+
+            @Override
+            public void switchActivated(DatapathId switchId) {
+
+            }
+
+            @Override
+            public void switchPortChanged(DatapathId switchId, OFPortDesc port, PortChangeType type) {
+
+            }
+
+            @Override
+            public void switchChanged(DatapathId switchId) {
+
+            }
+
+            @Override
+            public void switchDeactivated(DatapathId switchId) {
+
+            }
+        });
     }
 
     private void buildHandlerMap() {
@@ -84,7 +169,7 @@ public class VirtualRouter implements IFloodlightModule, IVirtualRouter, IOFMess
 
     private String buildKey(Ethernet inputEthernetFrame) {
         StringBuilder key = new StringBuilder();
-        for (IPacket packet = inputEthernetFrame; packet != null && ! (packet instanceof Data); packet = packet.getPayload()) {
+        for ( IPacket packet = inputEthernetFrame; packet != null && !(packet instanceof Data); packet = packet.getPayload() ) {
             key.append(packet.getClass().getSimpleName());
         }
         return key.toString();
@@ -102,6 +187,6 @@ public class VirtualRouter implements IFloodlightModule, IVirtualRouter, IOFMess
 
     @Override
     public boolean isCallbackOrderingPostreq(OFType type, String name) {
-        return name.equals("devicemanager");
+        return name.equals("forwarding");
     }
 }

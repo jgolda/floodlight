@@ -40,8 +40,8 @@ public class ICMPPacketHandler implements PacketHandler {
         if ( inputIpPacket.getPayload() instanceof ICMP ) {
             logger.debug("handling icmp packet");
             ICMP inputIcmpPacket = (ICMP) inputIpPacket.getPayload();
-            logger.debug(inputIpPacket.getSourceAddress() + " is icmping " + inputIpPacket.getDestinationAddress() + ". ICMP type: " + inputIcmpPacket.getType().name() + ", in byte: " + inputIcmpPacket.getType().value() + ". ICMP code: " + inputIcmpPacket.getCode().name() + ", in byte: " + inputIcmpPacket.getCode().value());
-            Optional<Gateway> optionalGateway = gatewayStore.getGateway(inputIpPacket.getDestinationAddress());
+            logger.debug(inputIpPacket.getSourceAddress() + " is icmping " + inputIpPacket.getDestinationAddress() + ". ICMP type: " + inputIcmpPacket.getType().name() + ". ICMP code: " + inputIcmpPacket.getCode().name() + ". Received from switch: " + sw.getId());
+            Optional<Gateway> optionalGateway = gatewayStore.getGateway(inputIpPacket.getDestinationAddress(), sw.getId());
             if (ICMP.Code.ECHO_REQUEST.equals(inputIcmpPacket.getCode()) && optionalGateway.isPresent()) {
                 Gateway queriedGateway = optionalGateway.get();
                 logger.debug("responding to icmp echo request packet");
