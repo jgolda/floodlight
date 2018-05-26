@@ -8,7 +8,7 @@ import org.projectfloodlight.openflow.types.MacAddress;
 import java.util.HashMap;
 import java.util.Map;
 
-import static net.floodlightcontroller.virtualrouter.store.GatewayColumns.*;
+import static net.floodlightcontroller.virtualrouter.store.gateway.GatewayColumns.*;
 
 public class Gateway {
 

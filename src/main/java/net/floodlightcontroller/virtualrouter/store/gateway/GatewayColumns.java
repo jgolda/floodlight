@@ -1,4 +1,4 @@
-package net.floodlightcontroller.virtualrouter.store;
+package net.floodlightcontroller.virtualrouter.store.gateway;
 
 import java.util.Arrays;
 import java.util.Collections;

@@ -1,4 +1,4 @@
-package net.floodlightcontroller.virtualrouter.store;
+package net.floodlightcontroller.virtualrouter.store.gateway;
 
 import net.floodlightcontroller.storage.IResultSet;
 import net.floodlightcontroller.storage.RowMapper;

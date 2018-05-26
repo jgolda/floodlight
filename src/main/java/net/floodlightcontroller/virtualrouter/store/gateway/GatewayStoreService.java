@@ -1,4 +1,4 @@
-package net.floodlightcontroller.virtualrouter.store;
+package net.floodlightcontroller.virtualrouter.store.gateway;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.virtualrouter.Gateway;

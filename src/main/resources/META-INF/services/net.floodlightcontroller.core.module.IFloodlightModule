@@ -22,6 +22,8 @@ net.floodlightcontroller.forwarding.Forwarding
 net.floodlightcontroller.loadbalancer.LoadBalancer
 net.floodlightcontroller.linkdiscovery.internal.LinkDiscoveryManager
 net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl
+net.floodlightcontroller.virtualrouter.VirtualRouter
+net.floodlightcontroller.virtualrouter.store.gateway.GatewayStore
 net.floodlightcontroller.firewall.Firewall
 net.floodlightcontroller.accesscontrollist.ACL
 net.floodlightcontroller.dhcpserver.DHCPServer
