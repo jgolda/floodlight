@@ -24,6 +24,8 @@ import java.util.Set;
 
 import javax.annotation.Nonnull;
 
+import net.floodlightcontroller.devicemanager.internal.Device;
+import net.floodlightcontroller.devicemanager.internal.Entity;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.IPv6Address;
@@ -40,6 +42,8 @@ import net.floodlightcontroller.core.module.IFloodlightService;
  * from the {@link FloodlightContext} rather than from {@link IDeviceManager}.
  */
 public interface IDeviceService extends IFloodlightService {
+
+    Device registerDevice(Entity entity);
 
     /**
      * Fields used in devices for indexes and querying

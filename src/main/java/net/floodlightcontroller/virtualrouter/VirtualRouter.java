@@ -19,7 +19,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static org.projectfloodlight.openflow.protocol.OFType.PACKET_IN;
 
@@ -79,6 +78,8 @@ public class VirtualRouter implements IFloodlightModule, IVirtualRouter, IOFMess
                                     .build()
                             )
                             .setActions(Arrays.asList(
+                                    ofFactory.actions().setField(ofFactory.oxms().ethSrc(MacAddress.of("08:00:27:99:00:34"))),
+                                    ofFactory.actions().setField(ofFactory.oxms().ethDst(MacAddress.of("08:00:27:d2:de:dc"))),
                                     ofFactory.actions().output(firstOutputPort, 2048)
                             ))
                             .build();
@@ -95,6 +96,8 @@ public class VirtualRouter implements IFloodlightModule, IVirtualRouter, IOFMess
                                     .build()
                             )
                             .setActions(Arrays.asList(
+                                    ofFactory.actions().setField(ofFactory.oxms().ethSrc(MacAddress.of("08:00:27:eb:3d:ce"))),
+                                    ofFactory.actions().setField(ofFactory.oxms().ethDst(MacAddress.of("08:00:27:49:28:8e"))),
                                     ofFactory.actions().output(secondOutputPort, 2048)
                             ))
                             .build();
@@ -182,11 +185,11 @@ public class VirtualRouter implements IFloodlightModule, IVirtualRouter, IOFMess
 
     @Override
     public boolean isCallbackOrderingPrereq(OFType type, String name) {
-        return false;
+        return name.equals("forwarding");
     }
 
     @Override
     public boolean isCallbackOrderingPostreq(OFType type, String name) {
-        return name.equals("forwarding");
+        return false;
     }
 }

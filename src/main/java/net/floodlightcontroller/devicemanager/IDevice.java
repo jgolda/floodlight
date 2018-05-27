@@ -110,5 +110,6 @@ public interface IDevice {
      * @see IEntityClassifierService
      */
     public IEntityClass getEntityClass();
-    
+
+    boolean isVirtualInterface();
 }

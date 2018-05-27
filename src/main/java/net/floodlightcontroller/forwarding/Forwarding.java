@@ -450,7 +450,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         }
 
         /* This packet-in is from a switch in the path before its flow was installed along the path */
-        if (!topologyService.isEdge(srcSw, srcPort)) {  
+        if (!topologyService.isEdge(srcSw, srcPort) && !dstDevice.isVirtualInterface() && !srcDevice.isVirtualInterface()) {
             log.debug("Packet destination is known, but packet was not received on an edge port (rx on {}/{}). Flooding packet", srcSw, srcPort);
             doFlood(sw, pi, decision, cntx);
             return; 
@@ -514,8 +514,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
             pushRoute(path, m, pi, sw.getId(), cookie, 
                     cntx, requestFlowRemovedNotifn,
-                    OFFlowModCommand.ADD);	
-            
+                    OFFlowModCommand.ADD);
+
             /* 
              * Register this flowset with ingress and egress ports for link down
              * flow removal. This is done after we push the path as it is blocking.

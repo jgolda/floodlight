@@ -1380,18 +1380,14 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		return deviceMap.get(deviceKey);
 	}
 
-	/**
-	 * Look up a {@link Device} within a particular entity class based on
-	 * the provided {@link Entity}.
-	 * @param clazz the entity class to search for the entity
-	 * @param entity the entity to search for
-	 * @return The {@link Device} object if found
-    private Device findDeviceInClassByEntity(IEntityClass clazz,
-                                               Entity entity) {
-        // XXX - TODO
-        throw new UnsupportedOperationException();
-    }
-	 */
+	@Override
+	public Device registerDevice(Entity entity) {
+		long deviceKey = deviceKeyCounter.getAndIncrement();
+		IEntityClass entityClass = entityClassifier.classifyEntity(entity);
+		Device device = new Device(this, deviceKey, entity, entityClass);
+		primaryIndex.updateIndex(device, deviceKey);
+		return deviceMap.putIfAbsent(deviceKey, device);
+	}
 
 	/**
 	 * Look up a {@link Device} based on the provided {@link Entity}.  Also
@@ -1481,7 +1477,9 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 
 
 				// Add the new device to the primary map with a simple put
-				deviceMap.put(deviceKey, device);
+				if (!device.isVirtualInterface()) {
+					deviceMap.put(deviceKey, device);
+				}
 				// update indices
 				if (!updateIndices(device, deviceKey)) {
 					if (deleteQueue == null)
@@ -1544,12 +1542,14 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 				EnumSet<DeviceField> changedFields = findChangedFields(device, entity);
 
 				// update the device map with a replace call
-				boolean res = deviceMap.replace(deviceKey, device, newDevice);
-				// If replace returns false, restart the process from the
-				// beginning (this implies another thread concurrently
-				// modified this Device).
-				if (!res)
-					continue;
+				if (! device.isVirtualInterface()) {
+					boolean res = deviceMap.replace(deviceKey, device, newDevice);
+					// If replace returns false, restart the process from the
+					// beginning (this implies another thread concurrently
+					// modified this Device).
+					if ( !res )
+						continue;
+				}
 
 				device = newDevice;
 				// update indices
@@ -1575,25 +1575,9 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 			// Update attachment point (will only be hit if the device
 			// already existed and no concurrent modification)
 			if (entity.hasSwitchPort()) {
-				boolean moved = device.updateAttachmentPoint(entity.getSwitchDPID(),
+				device.updateAttachmentPoint(entity.getSwitchDPID(),
 						entity.getSwitchPort(),
 						entity.getLastSeenTimestamp());
-				if (moved) {
-					// we count device moved events in sendDeviceMovedNotification()
-					// TODO remove this. It's now done in the event handler as a result of the update above... sendDeviceMovedNotification(device);
-					if (logger.isTraceEnabled()) {
-						logger.trace("Device moved: attachment points {}," +
-								"entities {}", device.attachmentPoints,
-								device.entities);
-					}
-				} else {
-					if (logger.isTraceEnabled()) {
-						logger.trace("Device attachment point updated: " +
-								"attachment points {}," +
-								"entities {}", device.attachmentPoints,
-								device.entities);
-					}
-				}
 			}
 			break;
 		}

@@ -4,11 +4,11 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.devicemanager.IDeviceService;
+import net.floodlightcontroller.devicemanager.internal.Entity;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.virtualrouter.Gateway;
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.IPv4Address;
-import org.projectfloodlight.openflow.types.MacAddress;
+import org.projectfloodlight.openflow.types.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,6 +24,7 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
     private Map<IPv4Address, Gateway> gatewayIpMap;
     private Map<MacAddress, Gateway> gatewayMacMap;
     private Map<DatapathId, Set<Gateway>> gatewaySwitchMap;
+    private IDeviceService deviceService;
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
@@ -37,12 +38,14 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-        return Collections.singleton(IStorageSourceService.class);
+        return Arrays.asList(IStorageSourceService.class,
+                IDeviceService.class);
     }
 
     @Override
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         storage = context.getServiceImpl(IStorageSourceService.class);
+        deviceService = context.getServiceImpl(IDeviceService.class);
     }
 
     @Override
@@ -73,6 +76,16 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
     private void pushDummyGatewayIfNotExist() {
         final IPv4Address dummyIp124 = IPv4Address.of("192.168.124.1");
         final MacAddress dummyMac124 = MacAddress.of("08:00:27:eb:3d:ce");
+        Entity dummyEntity124 = new Entity(dummyMac124,
+                VlanVid.ZERO,
+                dummyIp124,
+                IPv6Address.NONE,
+                DatapathId.of("00:00:08:00:27:99:00:34"),
+                OFPort.of(3),
+                new Date(),
+                true);
+
+        deviceService.registerDevice(dummyEntity124);
 
         Map<String, Object> record124 = Gateway.builder()
                 .setSwitchId("00:00:08:00:27:99:00:34")
@@ -99,6 +112,17 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
                 .build()
                 .toRecord();
 
+        Entity dummyEntity122 = new Entity(dummyMac122,
+                VlanVid.ZERO,
+                dummyIp122,
+                IPv6Address.NONE,
+                DatapathId.of("00:00:08:00:27:99:00:34"),
+                OFPort.of(3),
+                new Date(),
+                true);
+
+        deviceService.registerDevice(dummyEntity122);
+
         record122.put(GatewayColumns.ID, 122L);
 
         storage.insertRow(GATEWAY_TABLE_NAME, record122);
@@ -110,8 +134,7 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
 
     @Override
     public Optional<Gateway> getGateway(IPv4Address address, DatapathId switchId) {
-        return Optional.ofNullable(gatewayIpMap.get(address))
-                .filter(gateway -> gateway.getSwitchId().equals(switchId));
+        return Optional.ofNullable(gatewayIpMap.get(address));
     }
 
     @Override
