@@ -19,6 +19,7 @@ package net.floodlightcontroller.devicemanager;
 
 import java.util.Date;
 
+import net.floodlightcontroller.devicemanager.internal.Entity;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.IPv6Address;
 import org.projectfloodlight.openflow.types.MacAddress;
@@ -112,4 +113,6 @@ public interface IDevice {
     public IEntityClass getEntityClass();
 
     boolean isVirtualInterface();
+
+    Iterable<? extends Entity> getEntities();
 }

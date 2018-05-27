@@ -116,8 +116,8 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 	protected ITopologyService topology;
 	protected IStorageSourceService storageSource;
 	protected IRestApiService restApi;
-	protected IThreadPoolService threadPool;
-	protected IDebugCounterService debugCounters;
+	private IThreadPoolService threadPool;
+	private IDebugCounterService debugCounters;
 	private ISyncService syncService;
 	private IStoreClient<String, DeviceSyncRepresentation> storeClient;
 	private DeviceSyncManager deviceSyncManager;
@@ -125,7 +125,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 	/**
 	 * Debug Counters
 	 */
-	public static final String MODULE_NAME = "devicemanager";
+	private static final String MODULE_NAME = "devicemanager";
 	public static final String PACKAGE = DeviceManagerImpl.class.getPackage().getName();
 	public IDebugCounter cntIncoming;
 	public IDebugCounter cntReconcileRequest;
@@ -214,7 +214,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 	/**
 	 * This stores secondary indices over the fields in the devices
 	 */
-	protected Map<EnumSet<DeviceField>, DeviceIndex> secondaryIndexMap;
+	protected Map<Set<DeviceField>, DeviceIndex> secondaryIndexMap;
 
 	/**
 	 * This map contains state for each of the {@ref IEntityClass}
@@ -225,7 +225,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 	/**
 	 * This is the list of indices we want on a per-class basis
 	 */
-	protected Set<EnumSet<DeviceField>> perClassIndices;
+	protected Set<Set<DeviceField>> perClassIndices;
 
 	/**
 	 * The entity classifier currently in use
@@ -246,7 +246,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		 * This stores secondary indices over the fields in the device for the
 		 * class
 		 */
-		protected Map<EnumSet<DeviceField>, DeviceIndex> secondaryIndexMap;
+		protected Map<Set<DeviceField>, DeviceIndex> secondaryIndexMap;
 
 		/**
 		 * Allocate a new {@link ClassState} object for the class
@@ -263,8 +263,8 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 				classIndex = new DeviceUniqueIndex(keyFields);
 
 			secondaryIndexMap =
-					new HashMap<EnumSet<DeviceField>, DeviceIndex>();
-			for (EnumSet<DeviceField> fields : perClassIndices) {
+					new HashMap<>();
+			for (Set<DeviceField> fields : perClassIndices) {
 				secondaryIndexMap.put(fields,
 						new DeviceMultiIndex(fields));
 			}
@@ -283,13 +283,13 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 	 */
 	protected static class DeviceUpdate {
 		public enum Change {
-			ADD, DELETE, CHANGE;
+			ADD, DELETE, CHANGE
 		}
 
 		/**
 		 * The affected device
 		 */
-		protected Device device;
+		protected IDevice device;
 
 		/**
 		 * The change that was made
@@ -299,10 +299,10 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		/**
 		 * If not added, then this is the list of fields changed
 		 */
-		protected EnumSet<DeviceField> fieldsChanged;
+		protected Set<DeviceField> fieldsChanged;
 
-		public DeviceUpdate(Device device, Change change,
-				EnumSet<DeviceField> fieldsChanged) {
+		public DeviceUpdate(IDevice device, Change change,
+				Set<DeviceField> fieldsChanged) {
 			super();
 			this.device = device;
 			this.change = change;
@@ -430,10 +430,14 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 	}
 
 	@Override
-	public IDevice findDevice(@Nonnull MacAddress macAddress, VlanVid vlan,
-			@Nonnull IPv4Address ipv4Address, @Nonnull IPv6Address ipv6Address,
-			@Nonnull DatapathId switchDPID, @Nonnull OFPort switchPort)
-					throws IllegalArgumentException {
+	public IDevice findDevice(
+			@Nonnull MacAddress macAddress,
+			VlanVid vlan,
+			@Nonnull IPv4Address ipv4Address,
+			@Nonnull IPv6Address ipv6Address,
+			@Nonnull DatapathId switchDPID,
+			@Nonnull OFPort switchPort
+	) {
 		if (macAddress == null) {
     		throw new IllegalArgumentException("MAC address cannot be null. Try MacAddress.NONE if intention is 'no MAC'");
     	}
@@ -469,9 +473,13 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 	}
 
 	@Override
-	public IDevice findClassDevice(@Nonnull IEntityClass entityClass, @Nonnull MacAddress macAddress,
-			@Nonnull VlanVid vlan, @Nonnull IPv4Address ipv4Address, @Nonnull IPv6Address ipv6Address)
-					throws IllegalArgumentException {
+	public IDevice findClassDevice(
+			@Nonnull IEntityClass entityClass,
+			@Nonnull MacAddress macAddress,
+			@Nonnull VlanVid vlan,
+			@Nonnull IPv4Address ipv4Address,
+			@Nonnull IPv6Address ipv6Address
+	) {
 		if (entityClass == null) {
     		throw new IllegalArgumentException("Entity class cannot be null.");
     	}
@@ -504,7 +512,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 
 	@Override
 	public void addIndex(boolean perClass,
-			EnumSet<DeviceField> keyFields) {
+			Set<DeviceField> keyFields) {
 		if (perClass) {
 			perClassIndices.add(keyFields);
 		} else {
@@ -642,66 +650,6 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		return new MultiIterator<Device>(iterators.iterator());
 	}
 
-	protected Iterator<Device> getDeviceIteratorForQuery(@Nonnull MacAddress macAddress,
-			VlanVid vlan,
-			@Nonnull IPv4Address ipv4Address,
-			@Nonnull IPv6Address ipv6Address,
-			@Nonnull DatapathId switchDPID,
-			@Nonnull OFPort switchPort) {
-		if (macAddress == null) {
-    		throw new IllegalArgumentException("MAC address cannot be null. Try MacAddress.NONE if intention is 'no MAC'");
-    	}
-    	if (ipv4Address == null) {
-    		throw new IllegalArgumentException("IPv4 address cannot be null. Try IPv4Address.NONE if intention is 'no IPv4'");
-    	}
-    	if (ipv6Address == null) {
-    		throw new IllegalArgumentException("IPv6 address cannot be null. Try IPv6Address.NONE if intention is 'no IPv6'");
-    	}
-    	/* VLAN can be null, which means 'don't care' */
-    	if (switchDPID == null) {
-    		throw new IllegalArgumentException("Switch DPID cannot be null. Try DatapathId.NONE if intention is 'no DPID'");
-    	}
-    	if (switchPort == null) {
-    		throw new IllegalArgumentException("Switch port cannot be null. Try OFPort.ZERO if intention is 'no port'");
-    	}
-		
-		DeviceIndex index = null;
-		if (secondaryIndexMap.size() > 0) {
-			EnumSet<DeviceField> keys =
-					getEntityKeys(macAddress, vlan, ipv4Address,
-							ipv6Address, switchDPID, switchPort);
-			index = secondaryIndexMap.get(keys);
-		}
-
-		Iterator<Device> deviceIterator = null;
-		if (index == null) {
-			// Do a full table scan
-			deviceIterator = deviceMap.values().iterator();
-		} else {
-			// index lookup
-			Entity entity = new Entity(macAddress,
-					vlan,
-					ipv4Address,
-					ipv6Address,
-					switchDPID,
-					switchPort,
-					Entity.NO_DATE);
-			deviceIterator =
-					new DeviceIndexInterator(this, index.queryByEntity(entity));
-		}
-
-		DeviceIterator di =
-				new DeviceIterator(deviceIterator,
-						null,
-						macAddress,
-						vlan,
-						ipv4Address,
-						ipv6Address,
-						switchDPID,
-						switchPort);
-		return di;
-	}
-
 	@Override
 	public void addListener(IDeviceListener listener) {
 		deviceListeners.addListener("device", listener);
@@ -824,11 +772,11 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 	@Override
 	public void init(FloodlightModuleContext fmc) throws FloodlightModuleException {
 		this.perClassIndices =
-				new HashSet<EnumSet<DeviceField>>();
+				new HashSet<>();
 		addIndex(true, EnumSet.of(DeviceField.IPv4));
 		addIndex(true, EnumSet.of(DeviceField.IPv6));
 
-		this.deviceListeners = new ListenerDispatcher<String, IDeviceListener>();
+		this.deviceListeners = new ListenerDispatcher<>();
 		this.suppressAPs = Collections.newSetFromMap(
 				new ConcurrentHashMap<SwitchPort, Boolean>());
 
@@ -853,11 +801,11 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 			throws FloodlightModuleException {
 		isMaster = (floodlightProvider.getRole() == HARole.ACTIVE);
 		primaryIndex = new DeviceUniqueIndex(entityClassifier.getKeyFields());
-		secondaryIndexMap = new HashMap<EnumSet<DeviceField>, DeviceIndex>();
+		secondaryIndexMap = new HashMap<>();
 
-		deviceMap = new ConcurrentHashMap<Long, Device>();
+		deviceMap = new ConcurrentHashMap<>();
 		classStateMap =
-				new ConcurrentHashMap<String, ClassState>();
+				new ConcurrentHashMap<>();
 		apComparator = new AttachmentPointComparator();
 
 		floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
@@ -911,7 +859,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		floodlightProvider.addInfoProvider("summary", this);
 	}
 
-	private void registerDeviceManagerDebugCounters() throws FloodlightModuleException {
+	private void registerDeviceManagerDebugCounters() {
 		if (debugCounters == null) {
 			logger.error("Debug Counter Service not found.");
 		}
@@ -1131,8 +1079,6 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 
 	/**
 	 * Snoop and record client-provided host name from DHCP requests
-	 * @param eth
-	 * @param srcDevice
 	 */
 	private void snoopDHCPClientName(Ethernet eth, Device srcDevice) {
 		if (! (eth.getPayload() instanceof IPv4) )
@@ -1177,9 +1123,6 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 	 * Get sender IPv4 address from packet if the packet is an ARP
 	 * packet and if the source MAC address matches the ARP packets
 	 * sender MAC address.
-	 * @param eth
-	 * @param dlAddr
-	 * @return
 	 */
 	private IPv4Address getSrcIPv4AddrFromARP(Ethernet eth, MacAddress dlAddr) {
 		if (eth.getPayload() instanceof ARP) {
@@ -1193,10 +1136,6 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 	
 	/**
 	 * Get sender IPv6 address from packet if the packet is ND
-	 * 
-	 * @param eth
-	 * @param dlAddr
-	 * @return
 	 */
 	private IPv6Address getSrcIPv6Addr(Ethernet eth) {
 		if (eth.getPayload() instanceof IPv6) {
@@ -1209,8 +1148,6 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 	/**
 	 * Parse an entity from an {@link Ethernet} packet.
 	 * @param eth the packet to parse
-	 * @param sw the switch on which the packet arrived
-	 * @param pi the original packetin
 	 * @return the entity from the packet
 	 */
 	protected Entity getSourceEntityFromPacket(Ethernet eth, DatapathId swdpid, OFPort port) {
@@ -1276,8 +1213,6 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 
 	/**
 	 * Get a (partial) entity for the destination from the packet.
-	 * @param eth
-	 * @return
 	 */
 	protected Entity getDestEntityFromPacket(Ethernet eth) {
 		MacAddress dlAddr = eth.getDestinationMACAddress();
@@ -1322,14 +1257,13 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		// Look up the fully-qualified entity to see if it already
 		// exists in the primary entity index.
 		Long deviceKey = primaryIndex.findByEntity(entity);
-		IEntityClass entityClass = null;
 
 		if (deviceKey == null) {
 			// If the entity does not exist in the primary entity index,
 			// use the entity classifier for find the classes for the
 			// entity. Look up the entity in the returned class'
 			// class entity index.
-			entityClass = entityClassifier.classifyEntity(entity);
+			IEntityClass entityClass = entityClassifier.classifyEntity(entity);
 			if (entityClass == null) {
 				return null;
 			}
@@ -1400,7 +1334,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 	protected Device learnDeviceByEntity(Entity entity) {
 		ArrayList<Long> deleteQueue = null;
 		LinkedList<DeviceUpdate> deviceUpdates = null;
-		Device device = null;
+			Device device;
 
 		// we may need to restart the learning process if we detect
 		// concurrent modification.  Note that we ensure that at least
@@ -1461,20 +1395,8 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 					device = null;
 					break;
 				}
-				// Before we create the new device also check if
-				// the entity is allowed (e.g., for spoofing protection)
-				if (!isEntityAllowed(entity, entityClass)) {
-					cntPacketNotAllowed.increment();
-					if (logger.isDebugEnabled()) {
-						logger.debug("PacketIn is not allowed {} {}",
-								entityClass.getName(), entity);
-					}
-					device = null;
-					break;
-				}
 				deviceKey = deviceKeyCounter.getAndIncrement();
 				device = allocateDevice(deviceKey, entity, entityClass);
-
 
 				// Add the new device to the primary map with a simple put
 				if (!device.isVirtualInterface()) {
@@ -1483,7 +1405,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 				// update indices
 				if (!updateIndices(device, deviceKey)) {
 					if (deleteQueue == null)
-						deleteQueue = new ArrayList<Long>();
+						deleteQueue = new ArrayList<>();
 					deleteQueue.add(deviceKey);
 					continue;
 				}
@@ -1502,15 +1424,6 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 				deviceUpdates = updateUpdates(deviceUpdates, new DeviceUpdate(device, ADD, null));
 
 				break;
-			}
-			// if it gets here, we have a pre-existing Device for this Entity
-			if (!isEntityAllowed(entity, device.getEntityClass())) {
-				cntPacketNotAllowed.increment();
-				if (logger.isDebugEnabled()) {
-					logger.info("PacketIn is not allowed {} {}",
-							device.getEntityClass().getName(), entity);
-				}
-				return null;
 			}
 			// If this is not an attachment point port we don't learn the new entity
 			// and don't update indexes. But we do allow the device to continue up
@@ -1594,10 +1507,6 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		return device;
 	}
 
-	protected boolean isEntityAllowed(Entity entity, IEntityClass entityClass) {
-		return true;
-	}
-
 	protected EnumSet<DeviceField> findChangedFields(Device device,
 			Entity newEntity) {
 		EnumSet<DeviceField> changedFields =
@@ -1605,21 +1514,6 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 						DeviceField.IPv6,
 						DeviceField.VLAN,
 						DeviceField.SWITCH);
-
-		/*
-		 * Do we really need this here?
-		 *
-		if (newEntity.getIpv4Address().equals(IPv4Address.NONE))
-			changedFields.remove(DeviceField.IPv4);
-		if (newEntity.getIpv6Address().equals(IPv6Address.NONE))
-			changedFields.remove(DeviceField.IPv6);
-		/*if (newEntity.getVlan().equals(VlanVid.ZERO)) TODO VLAN is ZERO here, since the actual Device and Entity must have some sort of VLAN, either untagged (ZERO) or some value 
-			changedFields.remove(DeviceField.VLAN);
-		if (newEntity.getSwitchDPID().equals(DatapathId.NONE) ||
-				newEntity.getSwitchPort().equals(OFPort.ZERO))
-			changedFields.remove(DeviceField.SWITCH); 
-
-		if (changedFields.size() == 0) return changedFields; */
 
 		for (Entity entity : device.getEntities()) {
 			if (newEntity.getIpv4Address().equals(IPv4Address.NONE) || /* NONE means 'not in this packet' */
@@ -1941,7 +1835,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 	  * finally delete the device itself.
 	  * @param device
 	  */
-	 protected void deleteDevice(Device device) {
+	 protected void deleteDevice(IDevice device) {
 		 // Don't count in this method. This method CAN BE called to clean-up
 		 // after concurrent device adds/updates and thus counting here
 		 // is misleading
@@ -1988,7 +1882,6 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		 return new Device(this, deviceKey, entity, entityClass);
 	 }
 
-	 // TODO: FIX THIS. What's 'this' that needs fixing?
 	 protected Device allocateDevice(Long deviceKey,
 			 String dhcpClientName,
 			 List<AttachmentPoint> aps,
@@ -2004,37 +1897,6 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 			 int insertionpoint) {
 		 return new Device(device, entity, insertionpoint);
 	 }
-
-	 //not used 
-	 /* TODO then let's get rid of it?
-	 protected Device allocateDevice(Device device, Set <Entity> entities) {
-		 List <AttachmentPoint> newPossibleAPs =
-				 new ArrayList<AttachmentPoint>();
-		 List <AttachmentPoint> newAPs =
-				 new ArrayList<AttachmentPoint>();
-		 for (Entity entity : entities) {
-			 if (entity.switchDPID != null && entity.switchPort != null) {
-				 AttachmentPoint aP =
-						 new AttachmentPoint(entity.switchDPID,
-								 entity.switchPort, new Date(0));
-				 newPossibleAPs.add(aP);
-			 }
-		 }
-		 if (device.attachmentPoints != null) {
-			 for (AttachmentPoint oldAP : device.attachmentPoints) {
-				 if (newPossibleAPs.contains(oldAP)) {
-					 newAPs.add(oldAP);
-				 }
-			 }
-		 }
-		 if (newAPs.isEmpty())
-			 newAPs = null;
-		 Device d = new Device(this, device.getDeviceKey(),
-				 device.getDHCPClientName(), newAPs, null,
-				 entities, device.getEntityClass());
-		 d.updateAttachmentPoint();
-		 return d;
-	 } */
 
 	 // *********************
 	 // ITopologyListener
@@ -2066,7 +1928,6 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 
 	 /**
 	  * Send update notifications to listeners
-	  * @param updates the updates to process.
 	  */
 	 protected void sendDeviceMovedNotification(Device d) {
 		 cntDeviceMoved.increment();
@@ -2103,7 +1964,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 	  * device entity class did not change then it returns false else true.
 	  * @param device
 	  */
-	 protected boolean reclassifyDevice(Device device)
+	 protected boolean reclassifyDevice(IDevice device)
 	 {
 		 // first classify all entities of this device
 		 if (device == null) {
@@ -2111,7 +1972,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 			 return false;
 		 }
 		 boolean needToReclassify = false;
-		 for (Entity entity : device.entities) {
+		 for (Entity entity : device.getEntities()) {
 			 IEntityClass entityClass =
 					 this.entityClassifier.classifyEntity(entity);
 			 if (entityClass == null || device.getEntityClass() == null) {
@@ -2137,7 +1998,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 				 DeviceUpdate.Change.DELETE, null));
 		 if (!deviceUpdates.isEmpty())
 			 processUpdates(deviceUpdates);
-		 for (Entity entity: device.entities ) {
+		 for (Entity entity: device.getEntities() ) {
 			 this.learnDeviceByEntity(entity);
 		 }
 
@@ -2180,7 +2041,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		  * new AP, new IP, entities removed).
 		  * @param d the device to store
 		  */
-		 public void storeDevice(Device d) {
+		 public void storeDevice(IDevice d) {
 			 if (!isMaster)
 				 return;
 			 if (d == null)
@@ -2216,10 +2077,9 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		 /**
 		  * Remove the given device from the store. If only some entities have
 		  * been removed the updated device should be written using
-		  * {@link #storeDevice(Device)}
 		  * @param d
 		  */
-		 public void removeDevice(Device d) {
+		 public void removeDevice(IDevice d) {
 			 if (!isMaster)
 				 return;
 			 // FIXME: could we have a problem with concurrent put to the
@@ -2243,7 +2103,6 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		 /**
 		  * Remove the given Versioned device from the store. If the device
 		  * was locally modified ignore the delete request.
-		  * @param syncedDeviceKey
 		  */
 		 private void removeDevice(Versioned<DeviceSyncRepresentation> dev) {
 			 try {
@@ -2269,8 +2128,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 				 logger.debug("Transitioning to MASTER role");
 			 }
 			 cntTransitionToMaster.increment();
-			 IClosableIterator<Map.Entry<String,Versioned<DeviceSyncRepresentation>>>
-			 iter = null;
+			 IClosableIterator<Map.Entry<String,Versioned<DeviceSyncRepresentation>>> iter;
 			 try {
 				 iter = storeClient.entries();
 			 } catch (SyncException e) {
@@ -2292,8 +2150,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 					 }
 				 }
 			 } finally {
-				 if (iter != null)
-					 iter.close();
+			 	iter.close();
 			 }
 			 storeConsolidateTask.reschedule(initialSyncStoreConsolidateMs,
 					 TimeUnit.MILLISECONDS);
@@ -2304,7 +2161,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		  * FIXME: concurrent modification behavior
 		  * @param device The device to write
 		  */
-		 private void writeUpdatedDeviceToStorage(Device device) {
+		 private void writeUpdatedDeviceToStorage(IDevice device) {
 			 try {
 				 cntDeviceStrored.increment();
 				 // FIXME: use a versioned put
@@ -2344,8 +2201,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 			 if (logger.isDebugEnabled()) {
 				 logger.debug("Running consolidateStore.");
 			 }
-			 IClosableIterator<Map.Entry<String,Versioned<DeviceSyncRepresentation>>>
-			 iter = null;
+			 IClosableIterator<Map.Entry<String,Versioned<DeviceSyncRepresentation>>> iter;
 			 try {
 				 iter = storeClient.entries();
 			 } catch (SyncException e) {
@@ -2411,7 +2267,6 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 
 	 /**
 	  * For testing.
-	  * @return
 	  */
 	 IHAListener getHAListener() {
 		 return this.haListenerDelegate;

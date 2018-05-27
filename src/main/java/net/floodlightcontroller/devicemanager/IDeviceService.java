@@ -159,7 +159,7 @@ public interface IDeviceService extends IFloodlightService {
      * @param keyFields the set of fields on which to index
      */
     public void addIndex(boolean perClass,
-                         EnumSet<DeviceField> keyFields);
+                         Set<DeviceField> keyFields);
     
     /**
      * Find devices that match the provided query.  Any fields that are

@@ -94,7 +94,7 @@ public class MockDeviceManager extends DeviceManagerImpl {
 	}
 
 	@Override 
-	public void deleteDevice(Device device) {
+	public void deleteDevice(IDevice device) {
 		super.deleteDevice(device);
 	}
 

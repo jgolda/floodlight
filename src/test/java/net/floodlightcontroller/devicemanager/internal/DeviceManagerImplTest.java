@@ -2747,25 +2747,25 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		Entity entity2b = new Entity(MacAddress.of(2L), VlanVid.ofVlan(2), IPv4Address.of(2), IPv6Address.NONE, DatapathId.of(2L), OFPort.of(2), new Date());
 
 
-		Device d1 = deviceManager.learnDeviceByEntity(entity1);
-		Device d2 = deviceManager.learnDeviceByEntity(entity2);
-		Device d1b = deviceManager.learnDeviceByEntity(entity1b);
-		Device d2b = deviceManager.learnDeviceByEntity(entity2b);
+		IDevice d1 = deviceManager.learnDeviceByEntity(entity1);
+		IDevice d2 = deviceManager.learnDeviceByEntity(entity2);
+		IDevice d1b = deviceManager.learnDeviceByEntity(entity1b);
+		IDevice d2b = deviceManager.learnDeviceByEntity(entity2b);
 
-		d1 = deviceManager.getDeviceIteratorForQuery(entity1.getMacAddress(),
+		d1 = deviceManager.queryDevices(entity1.getMacAddress(),
 				entity1.getVlan(), entity1.getIpv4Address(), entity1.getIpv6Address(),
 				entity1.getSwitchDPID(), entity1.getSwitchPort())
 				.next();
-		d1b = deviceManager.getDeviceIteratorForQuery(entity1b.getMacAddress(),
+		d1b = deviceManager.queryDevices(entity1b.getMacAddress(),
 				entity1b.getVlan(), entity1b.getIpv4Address(), entity1b.getIpv6Address(),
 				entity1b.getSwitchDPID(), entity1b.getSwitchPort()).next();
 
 		assertEquals(d1, d1b);
 
-		d2 = deviceManager.getDeviceIteratorForQuery(entity2.getMacAddress(),
+		d2 = deviceManager.queryDevices(entity2.getMacAddress(),
 				entity2.getVlan(), entity2.getIpv4Address(), entity2.getIpv6Address(),
 				entity2.getSwitchDPID(), entity2.getSwitchPort()).next();
-		d2b = deviceManager.getDeviceIteratorForQuery(entity2b.getMacAddress(),
+		d2b = deviceManager.queryDevices(entity2b.getMacAddress(),
 				entity2b.getVlan(), entity2b.getIpv4Address(), entity2b.getIpv6Address(),
 				entity2b.getSwitchDPID(), entity2b.getSwitchPort()).next();
 		assertEquals(d2, d2b);

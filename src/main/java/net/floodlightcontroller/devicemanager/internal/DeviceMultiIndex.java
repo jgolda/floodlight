@@ -17,11 +17,7 @@
 
 package net.floodlightcontroller.devicemanager.internal;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
@@ -40,7 +36,7 @@ public class DeviceMultiIndex extends DeviceIndex {
     /**
      * @param keyFields
      */
-    public DeviceMultiIndex(EnumSet<DeviceField> keyFields) {
+    public DeviceMultiIndex(Set<DeviceField> keyFields) {
         super(keyFields);
         index = new ConcurrentHashMap<IndexedEntity, Collection<Long>>();
     }

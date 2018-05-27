@@ -18,8 +18,8 @@
 package net.floodlightcontroller.devicemanager.internal;
 
 import java.util.Collection;
-import java.util.EnumSet;
 import java.util.Iterator;
+import java.util.Set;
 
 import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
 
@@ -30,13 +30,13 @@ public abstract class DeviceIndex {
     /**
      * The key fields for this index
      */
-    protected EnumSet<DeviceField> keyFields;
+    protected Set<DeviceField> keyFields;
 
     /**
      * Construct a new device index using the provided key fields
      * @param keyFields the key fields to use
      */
-    public DeviceIndex(EnumSet<DeviceField> keyFields) {
+    public DeviceIndex(Set<DeviceField> keyFields) {
         super();
         this.keyFields = keyFields;
     }
@@ -44,7 +44,6 @@ public abstract class DeviceIndex {
     /**
      * Find all device keys in the index that match the given entity
      * on all the key fields for this index
-     * @param e the entity to search for
      * @return an iterator over device keys
      */
     public abstract Iterator<Long> queryByEntity(Entity entity);
@@ -69,9 +68,7 @@ public abstract class DeviceIndex {
     /**
      * Add a mapping from the given entity to the given device key.  This
      * update will not fail because of a concurrent update 
-     * @param device the device to update
      * @param deviceKey the device key for the device
-     * @return 
      */
     public abstract boolean updateIndex(Entity entity, Long deviceKey);
 

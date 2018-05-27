@@ -751,8 +751,8 @@ public class Device implements IDevice {
 		return virtualInterface;
 	}
 
-	public Entity[] getEntities() {
-		return entities;
+	public List<Entity> getEntities() {
+		return Arrays.asList(entities);
 	}
 
 	public String getDHCPClientName() {

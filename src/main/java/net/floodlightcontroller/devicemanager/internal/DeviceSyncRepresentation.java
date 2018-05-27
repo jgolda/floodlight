@@ -7,6 +7,7 @@ import java.util.Date;
 import java.util.EnumSet;
 import java.util.List;
 
+import net.floodlightcontroller.devicemanager.IDevice;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.IPv6Address;
@@ -86,9 +87,9 @@ public class DeviceSyncRepresentation {
 		// do nothing
 	}
 
-	public DeviceSyncRepresentation(Device device) {
+	public DeviceSyncRepresentation(IDevice device) {
 		this.key = computeKey(device);
-		this.entities = new ArrayList<SyncEntity>();
+		this.entities = new ArrayList<>();
 		// FIXME: do we need the APs with errors as well??
 		// FIXME
 		SwitchPort[] aps = device.getAttachmentPoints();
@@ -121,7 +122,7 @@ public class DeviceSyncRepresentation {
 		return false;
 	}
 
-	static String computeKey(Device d) {
+	static String computeKey(IDevice d) {
 		StringBuilder bld = new StringBuilder(d.getEntityClass().getName());
 		bld.append("::");
 		EnumSet<DeviceField> keyFields = d.getEntityClass().getKeyFields();
@@ -166,7 +167,7 @@ public class DeviceSyncRepresentation {
 		if (entities == null) {
 			this.entities = null;
 		} else {
-			List<SyncEntity> tmp = new ArrayList<SyncEntity>(entities);
+			List<SyncEntity> tmp = new ArrayList<>(entities);
 			Collections.sort(tmp);
 			this.entities = tmp;
 		}

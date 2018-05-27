@@ -18,6 +18,7 @@
 package net.floodlightcontroller.devicemanager.web;
 
 import java.util.Iterator;
+import java.util.List;
 
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.internal.Device;
@@ -31,9 +32,9 @@ import org.restlet.resource.Get;
  */
 public class DeviceEntityResource extends AbstractDeviceResource {
     @Get("json")
-    public Iterator<Entity[]> getDeviceEntities() {
+    public Iterator<List<Entity>> getDeviceEntities() {
         final Iterator<? extends IDevice> devices = super.getDevices();
-        return new Iterator<Entity[]>() {
+        return new Iterator<List<Entity>>() {
 
             @Override
             public boolean hasNext() {
@@ -41,7 +42,7 @@ public class DeviceEntityResource extends AbstractDeviceResource {
             }
 
             @Override
-            public Entity[] next() {
+            public List<Entity> next() {
                 Device d = (Device)devices.next();
                 return d.getEntities();
             }

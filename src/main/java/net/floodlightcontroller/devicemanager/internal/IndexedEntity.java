@@ -16,7 +16,7 @@
 
 package net.floodlightcontroller.devicemanager.internal;
 
-import java.util.EnumSet;
+import java.util.Set;
 
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.IPv4Address;
@@ -36,7 +36,7 @@ import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
  * @author readams
  */
 public class IndexedEntity {
-    protected EnumSet<DeviceField> keyFields;
+    protected Set<DeviceField> keyFields;
     protected Entity entity;
     private int hashCode = 0;
     protected static Logger logger =
@@ -48,7 +48,7 @@ public class IndexedEntity {
      * {@link IndexedEntity#hashCode()} and {@link IndexedEntity#equals(Object)}
      * @param entity the entity to wrap
      */
-    public IndexedEntity(EnumSet<DeviceField> keyFields, Entity entity) {
+    public IndexedEntity(Set<DeviceField> keyFields, Entity entity) {
         super();
         this.keyFields = keyFields;
         this.entity = entity;
