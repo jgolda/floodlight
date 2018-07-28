@@ -1,11 +1,10 @@
 package net.floodlightcontroller.virtualrouter;
 
+import net.floodlightcontroller.devicemanager.internal.Entity;
 import org.apache.commons.lang.StringUtils;
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.IPv4Address;
-import org.projectfloodlight.openflow.types.IPv4AddressWithMask;
-import org.projectfloodlight.openflow.types.MacAddress;
+import org.projectfloodlight.openflow.types.*;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -17,7 +16,7 @@ public class Gateway {
 
     private DatapathId switchId;
 
-    private String portId;
+    private OFPort portId;
 
     private IPv4Address ipAddress;
 
@@ -28,7 +27,7 @@ public class Gateway {
     private Gateway(GatewayBuilder builder) {
         this.id = builder.id;
         this.switchId = DatapathId.of(builder.switchId);
-        this.portId = builder.portId;
+        this.portId = OFPort.of(builder.portId);
         this.ipAddress = IPv4Address.of(builder.ipAddress);
         this.networkAddress = buildNetworkAddress(builder);
         this.macAddress = MacAddress.of(builder.macAddress);
@@ -46,6 +45,17 @@ public class Gateway {
         return new GatewayBuilder();
     }
 
+    public Entity toEntity() {
+        return new Entity(macAddress,
+                VlanVid.ZERO,
+                ipAddress,
+                IPv6Address.NONE,
+                switchId,
+                portId,
+                new Date(),
+                true);
+    }
+
     public Long getId() {
         return id;
     }
@@ -54,7 +64,7 @@ public class Gateway {
         return switchId;
     }
 
-    public String getPortId() {
+    public OFPort getPortId() {
         return portId;
     }
 
@@ -83,7 +93,7 @@ public class Gateway {
     public static class GatewayBuilder {
         private Long id;
         private String switchId;
-        private String portId;
+        private Integer portId;
         private String ipAddress;
         private String networkAddress;
         private String mask;
@@ -102,7 +112,12 @@ public class Gateway {
             return this;
         }
 
-        public GatewayBuilder setPortId(String portId) {
+        public GatewayBuilder setPortId(OFPort portId) {
+            this.portId = portId.getPortNumber();
+            return this;
+        }
+
+        public GatewayBuilder setPortId(Integer portId) {
             this.portId = portId;
             return this;
         }

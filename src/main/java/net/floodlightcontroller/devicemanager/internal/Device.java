@@ -99,6 +99,7 @@ public class Device implements IDevice {
 	 */
 	public Device(DeviceManagerImpl deviceManager, Long deviceKey,
 			Entity entity, IEntityClass entityClass) {
+		log.info("Device(malo paramow)");
 		this.deviceManager = deviceManager;
 		this.deviceKey = deviceKey;
 		this.virtualInterface = entity.isVirtualInterface();
@@ -118,6 +119,7 @@ public class Device implements IDevice {
 
 			if (deviceManager.isValidAttachmentPoint(sw, port)) {
 				AttachmentPoint ap;
+				log.info(entity.getIpv4Address() + " valid attachment point");
 				ap = new AttachmentPoint(sw, port,
 						entity.getLastSeenTimestamp());
 				this.attachmentPoints = new ArrayList<AttachmentPoint>();
@@ -143,6 +145,7 @@ public class Device implements IDevice {
 			String dhcpClientName, Collection<AttachmentPoint> oldAPs,
 			Collection<AttachmentPoint> attachmentPoints,
 			Collection<Entity> entities, IEntityClass entityClass) {
+		log.info("Device(duzo paramow)");
 		this.deviceManager = deviceManager;
 		this.deviceKey = deviceKey;
 		this.dhcpClientName = dhcpClientName;

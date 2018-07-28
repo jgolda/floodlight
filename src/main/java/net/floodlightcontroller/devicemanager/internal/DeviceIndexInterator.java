@@ -17,12 +17,18 @@
 
 package net.floodlightcontroller.devicemanager.internal;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Iterator;
 
 /**
  * An iterator for handling device index queries
  */
 public class DeviceIndexInterator implements Iterator<Device> {
+
+    private static final Logger logger = LoggerFactory.getLogger(DeviceIndexInterator.class);
+
     private DeviceManagerImpl deviceManager;
     private Iterator<Long> subIterator;
 
@@ -48,7 +54,9 @@ public class DeviceIndexInterator implements Iterator<Device> {
     @Override
     public Device next() {
         Long next = subIterator.next();
-        return deviceManager.deviceMap.get(next);
+        Device device = deviceManager.deviceMap.get(next);
+        logger.info("------------------------------ accessing device map in DeviceIndexIterator: " + device);
+        return device;
     }
 
     @Override

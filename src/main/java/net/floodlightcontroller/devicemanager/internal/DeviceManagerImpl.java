@@ -1164,12 +1164,17 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 	 */
 	public boolean isValidAttachmentPoint(DatapathId switchDPID,
 			OFPort switchPort) {
-		if (topology.isAttachmentPointPort(switchDPID, switchPort) == false)
+		if (topology.isAttachmentPointPort(switchDPID, switchPort) == false) {
+			logger.info("-------- " + switchDPID + ", " + switchPort + " NIE JEST WALIDNYM attachment pointem  1");
 			return false;
+		}
 
-		if (suppressAPs.contains(new SwitchPort(switchDPID, switchPort)))
+		if (suppressAPs.contains(new SwitchPort(switchDPID, switchPort))) {
+			logger.info("-------- " + switchDPID + ", " + switchPort + " NIE JEST WALIDNYM attachment pointem  2");
 			return false;
+		}
 
+		logger.info("-------- " + switchDPID + ", " + switchPort + " jest walidnym attachment pointem");
 		return true;
 	}
 
@@ -1382,11 +1387,20 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 
 	@Override
 	public Device registerDevice(Entity entity) {
-		long deviceKey = deviceKeyCounter.getAndIncrement();
+		Long deviceKey = computeEntityKey(entity);
 		IEntityClass entityClass = entityClassifier.classifyEntity(entity);
 		Device device = new Device(this, deviceKey, entity, entityClass);
 		primaryIndex.updateIndex(device, deviceKey);
-		return deviceMap.putIfAbsent(deviceKey, device);
+		return deviceMap.put(deviceKey, device);
+	}
+
+	private Long computeEntityKey(Entity entity) {
+		Long existingDeviceKey = primaryIndex.findByEntity(entity);
+		if (existingDeviceKey != null) {
+			return existingDeviceKey;
+		} else {
+			return deviceKeyCounter.getAndIncrement();
+		}
 	}
 
 	/**
@@ -1860,6 +1874,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 				 }
 
 				 if (toKeep.size() > 0) {
+				 	logger.info("---------------------- allocate device w DeviceManagerImpl");
 					 Device newDevice = allocateDevice(d.getDeviceKey(),
 							 d.getDHCPClientName(),
 							 d.oldAPs,
@@ -1950,10 +1965,12 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 			 this.removeEntity(entity, device.getEntityClass(),
 					 device.getDeviceKey(), emptyToKeep);
 		 }
-		 if (!deviceMap.remove(device.getDeviceKey(), device)) {
-			 if (logger.isDebugEnabled())
-				 logger.debug("device map does not have this device -" +
-						 device.toString());
+		 if (!device.isVirtualInterface()) {
+			 if ( !deviceMap.remove(device.getDeviceKey(), device) ) {
+				 if ( logger.isDebugEnabled() )
+					 logger.debug("device map does not have this device -" +
+							 device.toString());
+			 }
 		 }
 	 }
 

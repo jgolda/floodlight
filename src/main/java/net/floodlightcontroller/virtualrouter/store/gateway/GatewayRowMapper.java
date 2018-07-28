@@ -11,7 +11,7 @@ public class GatewayRowMapper implements RowMapper<Gateway> {
         return Gateway.builder()
                 .setId(resultSet.getLong(GatewayColumns.ID))
                 .setSwitchId(resultSet.getString(GatewayColumns.SWITCH_ID))
-                .setPortId(resultSet.getString(GatewayColumns.PORT_ID))
+                .setPortId(resultSet.getInt(GatewayColumns.PORT_ID))
                 .setIpAddress(resultSet.getString(GatewayColumns.GATEWAY_IP_ADDRESS))
                 .setNetworkAddress(resultSet.getString(GatewayColumns.GATEWAY_NETWORK_ADDRESS))
                 .setMacAddress(resultSet.getString(GatewayColumns.GATEWAY_MAC_ADDRESS))
