@@ -1,17 +1,14 @@
 package net.floodlightcontroller.virtualrouter.store.gateway;
 
-import net.floodlightcontroller.core.IOFSwitchListener;
-import net.floodlightcontroller.core.PortChangeType;
+import net.floodlightcontroller.core.DefaultOFSwitchListener;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.devicemanager.IDeviceService;
-import net.floodlightcontroller.devicemanager.internal.Entity;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.virtualrouter.Gateway;
-import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,37 +79,12 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
     }
 
     private void registerGatewayDevices() {
-        switchService.addOFSwitchListener(new IOFSwitchListener() {
+        switchService.addOFSwitchListener(new DefaultOFSwitchListener() {
             @Override
             public void switchAdded(DatapathId switchId) {
                 gatewaySwitchMap.getOrDefault(switchId, Collections.emptySet()).stream()
                         .map(Gateway::toEntity)
                         .forEach(entity -> deviceService.registerDevice(entity));
-            }
-
-            @Override
-            public void switchRemoved(DatapathId switchId) {
-
-            }
-
-            @Override
-            public void switchActivated(DatapathId switchId) {
-
-            }
-
-            @Override
-            public void switchPortChanged(DatapathId switchId, OFPortDesc port, PortChangeType type) {
-
-            }
-
-            @Override
-            public void switchChanged(DatapathId switchId) {
-
-            }
-
-            @Override
-            public void switchDeactivated(DatapathId switchId) {
-
             }
         });
     }
@@ -149,10 +121,6 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
         record122.put(GatewayColumns.ID, 122L);
 
         storage.insertRow(GATEWAY_TABLE_NAME, record122);
-    }
-
-    public boolean isGatewayIp(IPv4Address address) {
-        return gatewayIpMap.containsKey(address);
     }
 
     @Override

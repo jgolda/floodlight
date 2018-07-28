@@ -60,7 +60,8 @@ public class VirtualRouter implements IFloodlightModule, IVirtualRouter, IOFMess
 //            aSwitch.getOFFactory()
 //        }
 
-        switchService.addOFSwitchListener(new IOFSwitchListener() {
+        // TODO: [jgolda] to chyba nie powinno być zahardkodowane
+        switchService.addOFSwitchListener(new DefaultOFSwitchListener() {
             @Override
             public void switchAdded(DatapathId switchId) {
                 DatapathId expectedDatapathId = DatapathId.of("00:00:08:00:27:99:00:34");
@@ -104,31 +105,6 @@ public class VirtualRouter implements IFloodlightModule, IVirtualRouter, IOFMess
 
                     aSwitch.write(add2);
                 }
-            }
-
-            @Override
-            public void switchRemoved(DatapathId switchId) {
-
-            }
-
-            @Override
-            public void switchActivated(DatapathId switchId) {
-
-            }
-
-            @Override
-            public void switchPortChanged(DatapathId switchId, OFPortDesc port, PortChangeType type) {
-
-            }
-
-            @Override
-            public void switchChanged(DatapathId switchId) {
-
-            }
-
-            @Override
-            public void switchDeactivated(DatapathId switchId) {
-
             }
         });
     }
