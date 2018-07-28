@@ -132,4 +132,9 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
     public boolean existGateway(DatapathId switchId) {
         return gatewaySwitchMap.containsKey(switchId) && ! gatewaySwitchMap.get(switchId).isEmpty();
     }
+
+    @Override
+    public Set<Gateway> getGatewaysRegsiteredOnSwitch(DatapathId switchId) {
+        return gatewaySwitchMap.getOrDefault(switchId, Collections.emptySet());
+    }
 }

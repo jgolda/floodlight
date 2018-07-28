@@ -55,7 +55,6 @@ public class DeviceIndexInterator implements Iterator<Device> {
     public Device next() {
         Long next = subIterator.next();
         Device device = deviceManager.deviceMap.get(next);
-        logger.info("------------------------------ accessing device map in DeviceIndexIterator: " + device);
         return device;
     }
 

@@ -12,6 +12,7 @@ import net.floodlightcontroller.virtualrouter.handlers.ICMPPacketHandler;
 import net.floodlightcontroller.virtualrouter.handlers.NullHandler;
 import net.floodlightcontroller.virtualrouter.handlers.PacketHandler;
 import net.floodlightcontroller.virtualrouter.store.gateway.GatewayStoreService;
+import org.apache.commons.collections4.CollectionUtils;
 import org.projectfloodlight.openflow.protocol.*;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.*;
@@ -45,7 +46,7 @@ public class VirtualRouter implements IFloodlightModule, IVirtualRouter, IOFMess
         gatewayStore = context.getServiceImpl(GatewayStoreService.class);
         switchService = context.getServiceImpl(IOFSwitchService.class);
         buildHandlerMap();
-        pushForwardingRulesForDirectlyAttachedNetworks();
+//        pushForwardingRulesForDirectlyAttachedNetworks();
     }
 
     private void pushForwardingRulesForDirectlyAttachedNetworks() {
@@ -64,6 +65,10 @@ public class VirtualRouter implements IFloodlightModule, IVirtualRouter, IOFMess
         switchService.addOFSwitchListener(new DefaultOFSwitchListener() {
             @Override
             public void switchAdded(DatapathId switchId) {
+                Set<Gateway> gateways = gatewayStore.getGatewaysRegsiteredOnSwitch(switchId);
+                if ( CollectionUtils.isNotEmpty(gateways) ) {
+                    IOFSwitch aSwitch = switchService.getSwitch(switchId);
+                }
                 DatapathId expectedDatapathId = DatapathId.of("00:00:08:00:27:99:00:34");
                 if (expectedDatapathId.equals(switchId)) {
                     IOFSwitch aSwitch = switchService.getSwitch(expectedDatapathId);
@@ -83,6 +88,7 @@ public class VirtualRouter implements IFloodlightModule, IVirtualRouter, IOFMess
                                     ofFactory.actions().setField(ofFactory.oxms().ethDst(MacAddress.of("08:00:27:d2:de:dc"))),
                                     ofFactory.actions().output(firstOutputPort, 2048)
                             ))
+                            .setIdleTimeout(10)
                             .build();
 
                     aSwitch.write(add);
@@ -101,6 +107,7 @@ public class VirtualRouter implements IFloodlightModule, IVirtualRouter, IOFMess
                                     ofFactory.actions().setField(ofFactory.oxms().ethDst(MacAddress.of("08:00:27:49:28:8e"))),
                                     ofFactory.actions().output(secondOutputPort, 2048)
                             ))
+                            .setIdleTimeout(10)
                             .build();
 
                     aSwitch.write(add2);
@@ -161,11 +168,11 @@ public class VirtualRouter implements IFloodlightModule, IVirtualRouter, IOFMess
 
     @Override
     public boolean isCallbackOrderingPrereq(OFType type, String name) {
-        return name.equals("forwarding");
+        return false;
     }
 
     @Override
     public boolean isCallbackOrderingPostreq(OFType type, String name) {
-        return false;
+        return name.equals("forwarding");
     }
 }
