@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import net.floodlightcontroller.forwarding.Forwarding;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -28,9 +29,13 @@ import org.projectfloodlight.openflow.types.U64;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.SwitchPort;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 public class RoutingDecision implements IRoutingDecision {
+
+    private static final Logger logger = LoggerFactory.getLogger(RoutingDecision.class);
 
     protected RoutingAction action;
     protected Match match;
@@ -51,7 +56,7 @@ public class RoutingDecision implements IRoutingDecision {
         this.broadcastIntertfaces = Collections.synchronizedList(new ArrayList<SwitchPort>());
         this.action = action;
         this.match = null;
-        this.hardTimeout = ForwardingBase.FLOWMOD_DEFAULT_HARD_TIMEOUT;
+        this.hardTimeout = Forwarding.FLOWMOD_DEFAULT_HARD_TIMEOUT;
     }
     
     @Override
@@ -128,6 +133,7 @@ public class RoutingDecision implements IRoutingDecision {
 
     @Override
     public void addToContext(FloodlightContext cntx) {
+        logger.info("Adding routing decision to context: " + this.toString());
         rtStore.put(cntx, IRoutingDecision.CONTEXT_DECISION, this);
     }
     

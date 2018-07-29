@@ -27,6 +27,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import net.floodlightcontroller.forwarding.Forwarding;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
@@ -55,7 +56,6 @@ import net.floodlightcontroller.packet.DHCP;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.restserver.IRestApiService;
-import net.floodlightcontroller.routing.ForwardingBase;
 
 /**
  * A simple Layer 2 (MAC based) network virtualization module. This module allows
@@ -467,8 +467,8 @@ implements IFloodlightModule, IVirtualNetworkService, IOFMessageListener {
 		List<OFAction> actions = new ArrayList<OFAction>(); // no actions = drop
 		U64 cookie = AppCookie.makeCookie(APP_ID, 0);
 		fmb.setCookie(cookie)
-		.setIdleTimeout(ForwardingBase.FLOWMOD_DEFAULT_IDLE_TIMEOUT)
-		.setHardTimeout(ForwardingBase.FLOWMOD_DEFAULT_HARD_TIMEOUT)
+		.setIdleTimeout(Forwarding.FLOWMOD_DEFAULT_IDLE_TIMEOUT)
+		.setHardTimeout(Forwarding.FLOWMOD_DEFAULT_HARD_TIMEOUT)
 		.setBufferId(OFBufferId.NO_BUFFER)
 		.setMatch(pi.getMatch())
 		.setActions(actions);
