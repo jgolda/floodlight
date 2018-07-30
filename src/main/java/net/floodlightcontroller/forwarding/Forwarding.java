@@ -40,20 +40,14 @@ import net.floodlightcontroller.routing.*;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.*;
 
+import net.floodlightcontroller.virtualrouter.Gateway;
+import net.floodlightcontroller.virtualrouter.store.gateway.GatewayStoreService;
 import org.projectfloodlight.openflow.protocol.*;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.EthType;
-import org.projectfloodlight.openflow.types.Masked;
-import org.projectfloodlight.openflow.types.OFBufferId;
-import org.projectfloodlight.openflow.types.OFGroup;
-import org.projectfloodlight.openflow.types.OFPort;
-import org.projectfloodlight.openflow.types.TableId;
-import org.projectfloodlight.openflow.types.U64;
-import org.projectfloodlight.openflow.types.VlanVid;
+import org.projectfloodlight.openflow.types.*;
 import org.python.google.common.collect.ImmutableList;
 import org.python.google.common.collect.Maps;
 import org.slf4j.Logger;
@@ -113,6 +107,7 @@ public class Forwarding extends DefaultOFSwitchListener implements IFloodlightMo
     protected ITopologyService topologyService;
     protected IDebugCounterService debugCounterService;
     protected ILinkDiscoveryService linkService;
+    private GatewayStoreService gatewayStore;
 
     // flow-mod - for use in the cookie
     public static final int FORWARDING_APP_ID = 2;
@@ -158,11 +153,12 @@ public class Forwarding extends DefaultOFSwitchListener implements IFloodlightMo
      *        send a flow mod removal notification when the flow mod expires
      * @param flowModCommand flow mod. command to use, e.g. OFFlowMod.OFPFC_ADD,
      *        OFFlowMod.OFPFC_MODIFY etc.
+     * @param build
      * @return true if a packet out was sent on the first-hop switch of this route
      */
     public boolean pushRoute(Path route, Match match, OFPacketIn pi,
                              DatapathId pinSwitch, U64 cookie, FloodlightContext cntx,
-                             boolean requestFlowRemovedNotification, OFFlowModCommand flowModCommand) {
+                             boolean requestFlowRemovedNotification, OFFlowModCommand flowModCommand, RoutingData routingData) {
 
         boolean packetOutSent = false;
 
@@ -212,7 +208,14 @@ public class Forwarding extends DefaultOFSwitchListener implements IFloodlightMo
             if (matchingConfig.isMatchInPort()) {
                 mb.setExact(MatchField.IN_PORT, inPort);
             }
-            aob.setPort(outPort);
+            if (!routingData.isRoutedRequest()) {
+                aob.setPort(outPort);
+            } else {
+                OFFactory factory = sw.getOFFactory();
+                actions.add(factory.actions().setField(factory.oxms().ethSrc(routingData.getOutputMac())));
+                actions.add(factory.actions().setField(factory.oxms().ethDst(routingData.getTargetMac())));
+                aob.setPort(routingData.getOutputPort());
+            }
             aob.setMaxLen(Integer.MAX_VALUE);
             actions.add(aob.build());
 
@@ -238,7 +241,7 @@ public class Forwarding extends DefaultOFSwitchListener implements IFloodlightMo
             }
 
             if (log.isTraceEnabled()) {
-                log.trace("Pushing Route flowmod routeIndx={} " +
+                log.info("Pushing Route flowmod routeIndx={} " +
                                 "sw={} inPort={} outPort={}",
                         new Object[] {indx,
                                 sw,
@@ -644,8 +647,35 @@ public class Forwarding extends DefaultOFSwitchListener implements IFloodlightMo
             return;
         }
 
+        RoutingData.RoutingDataBuilder builder = RoutingData.builder();
+        if (dstDevice.isVirtualInterface()) {
+            log.info("target device is a virtual gateway");
+            Ethernet ethernet = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+            if (EthType.IPv4.equals(ethernet.getEtherType())) {
+                IPv4 ipPacket = (IPv4) ethernet.getPayload();
+                IPv4Address destinationAddress = ipPacket.getDestinationAddress();
+                IPv4AddressWithMask masked = IPv4AddressWithMask.of(destinationAddress, IPv4Address.of("255.255.255.0"));
+                log.info("searching for gateway for network: " + masked + ", for switch: " + sw.getId());
+                log.info("seraching for target device for ip : " + ipPacket.getDestinationAddress());
+                Optional<Gateway> optionalOutputGateway = gatewayStore.getGateway(masked, sw.getId());
+                Optional<IDevice> optionalTargetDevice = deviceManagerService.findByIpAddress(ipPacket.getDestinationAddress());
+                if (optionalOutputGateway.isPresent() && optionalTargetDevice.isPresent()) {
+                    builder.routedRequest();
+                    Gateway gateway = optionalOutputGateway.get();
+                    log.info("found output gateway for packet: " + gateway.getIpAddress());
+                    OFPort outputPort = gateway.getForwardingPort();
+                    builder.setOutputPort(outputPort);
+                    MacAddress outputMacAddress = gateway.getMacAddress();
+                    builder.setOutputMac(outputMacAddress);
+
+                    log.info("found target device in index for ip: " + ipPacket.getDestinationAddress());
+                    builder.setTargetMac(optionalTargetDevice.get().getMACAddress());
+                }
+            }
+        }
+
         if (srcDevice == null) {
-            log.error("No device entry found for source device. Is the device manager running? If so, report bug.");
+            log.info("No device entry found for source device. Is the device manager running? If so, report bug.");
             return;
         }
 
@@ -653,14 +683,14 @@ public class Forwarding extends DefaultOFSwitchListener implements IFloodlightMo
         if (FLOOD_ALL_ARP_PACKETS && 
                 IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD).getEtherType() 
                 == EthType.ARP) {
-            log.debug("ARP flows disabled in Forwarding. Flooding ARP packet");
+            log.info("ARP flows disabled in Forwarding. Flooding ARP packet");
             doFlood(sw, pi);
             return;
         }
 
         /* This packet-in is from a switch in the path before its flow was installed along the path */
         if (!topologyService.isEdge(srcSw, srcPort) && !dstDevice.isVirtualInterface() && !srcDevice.isVirtualInterface()) {
-            log.debug("Packet destination is known, but packet was not received on an edge port (rx on {}/{}). Flooding packet", srcSw, srcPort);
+            log.info("Packet destination is known, but packet was not received on an edge port (rx on {}/{}). Flooding packet", srcSw, srcPort);
             doFlood(sw, pi);
             return; 
         }   
@@ -691,13 +721,13 @@ public class Forwarding extends DefaultOFSwitchListener implements IFloodlightMo
          * of a link.
          */
         if (dstAp == null) {
-            log.debug("Could not locate edge attachment point for destination device {}. Flooding packet");
+            log.info("Could not locate edge attachment point for destination device {}. Flooding packet", dstDevice.getMACAddress());
             doFlood(sw, pi);
             return; 
         }
 
         /* Validate that the source and destination are not on the same switch port */
-        if (sw.getId().equals(dstAp.getNodeId()) && srcPort.equals(dstAp.getPortId())) {
+        if (!dstDevice.isVirtualInterface() && sw.getId().equals(dstAp.getNodeId()) && srcPort.equals(dstAp.getPortId())) {
             log.info("Both source and destination are on the same switch/port {}/{}. Dropping packet", sw.toString(), srcPort);
             return;
         }			
@@ -718,12 +748,12 @@ public class Forwarding extends DefaultOFSwitchListener implements IFloodlightMo
                         new Object[] { srcPort, path,
                                 dstAp.getNodeId(),
                                 dstAp.getPortId()});
-                log.debug("Creating flow rules on the route, match rule: {}", m);
+                log.info("Creating flow rules on the route, match rule: {}", m);
             }
 
             pushRoute(path, m, pi, sw.getId(), cookie, 
                     cntx, requestFlowRemovedNotifn,
-                    OFFlowModCommand.ADD);
+                    OFFlowModCommand.ADD, builder.build());
 
             /* 
              * Register this flowset with ingress and egress ports for link down
@@ -751,6 +781,7 @@ public class Forwarding extends DefaultOFSwitchListener implements IFloodlightMo
         // We need to add in specifics for the hosts we're routing between.
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
+        log.info("Creating match from packet");
         return packetMatcher.createMatchFromPacket(sw, pi, eth, inPort);
     }
 
@@ -808,15 +839,15 @@ public class Forwarding extends DefaultOFSwitchListener implements IFloodlightMo
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-        Collection<Class<? extends IFloodlightService>> l =
-                new ArrayList<Class<? extends IFloodlightService>>();
-        l.add(IFloodlightProviderService.class);
-        l.add(IDeviceService.class);
-        l.add(IRoutingService.class);
-        l.add(ITopologyService.class);
-        l.add(IDebugCounterService.class);
-        l.add(ILinkDiscoveryService.class);
-        return l;
+        return Arrays.asList(
+                IFloodlightProviderService.class,
+                IDeviceService.class,
+                IRoutingService.class,
+                ITopologyService.class,
+                IDebugCounterService.class,
+                ILinkDiscoveryService.class,
+                GatewayStoreService.class
+        );
     }
 
     @Override
@@ -831,6 +862,7 @@ public class Forwarding extends DefaultOFSwitchListener implements IFloodlightMo
         this.debugCounterService = context.getServiceImpl(IDebugCounterService.class);
         this.switchService = context.getServiceImpl(IOFSwitchService.class);
         this.linkService = context.getServiceImpl(ILinkDiscoveryService.class);
+        this.gatewayStore = context.getServiceImpl(GatewayStoreService.class);
 
         MatchingConfig.ConfigBuilder configBuilder = MatchingConfig.builder();
         flowSetIdRegistry = FlowSetIdRegistry.getInstance();

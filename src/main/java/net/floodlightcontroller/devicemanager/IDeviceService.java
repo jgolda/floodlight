@@ -17,10 +17,7 @@
 
 package net.floodlightcontroller.devicemanager;
 
-import java.util.Collection;
-import java.util.EnumSet;
-import java.util.Iterator;
-import java.util.Set;
+import java.util.*;
 
 import javax.annotation.Nonnull;
 
@@ -42,6 +39,8 @@ import net.floodlightcontroller.core.module.IFloodlightService;
  * from the {@link FloodlightContext} rather than from {@link IDeviceManager}.
  */
 public interface IDeviceService extends IFloodlightService {
+
+    Optional<IDevice> findByIpAddress(IPv4Address ip);
 
     Device registerDevice(Entity entity);
 

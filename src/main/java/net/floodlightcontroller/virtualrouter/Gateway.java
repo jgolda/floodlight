@@ -16,7 +16,9 @@ public class Gateway {
 
     private DatapathId switchId;
 
-    private OFPort portId;
+    private final OFPort forwardingPort;
+
+    private OFPort devicePort;
 
     private IPv4Address ipAddress;
 
@@ -27,7 +29,8 @@ public class Gateway {
     private Gateway(GatewayBuilder builder) {
         this.id = builder.id;
         this.switchId = DatapathId.of(builder.switchId);
-        this.portId = OFPort.of(builder.portId);
+        this.devicePort = OFPort.of(builder.devicePort);
+        this.forwardingPort = OFPort.of(builder.forwardingPort);
         this.ipAddress = IPv4Address.of(builder.ipAddress);
         this.networkAddress = buildNetworkAddress(builder);
         this.macAddress = MacAddress.of(builder.macAddress);
@@ -51,7 +54,7 @@ public class Gateway {
                 ipAddress,
                 IPv6Address.NONE,
                 switchId,
-                portId,
+                devicePort,
                 new Date(),
                 true);
     }
@@ -64,8 +67,12 @@ public class Gateway {
         return switchId;
     }
 
-    public OFPort getPortId() {
-        return portId;
+    public OFPort getDevicePort() {
+        return devicePort;
+    }
+
+    public OFPort getForwardingPort() {
+        return forwardingPort;
     }
 
     public IPv4Address getIpAddress() {
@@ -83,7 +90,8 @@ public class Gateway {
     public Map<String, Object> toRecord() {
         HashMap<String, Object> result = new HashMap<>();
         result.put(SWITCH_ID, getSwitchId());
-        result.put(PORT_ID, getPortId());
+        result.put(DEVICE_PORT_ID, getDevicePort());
+        result.put(FORWARDING_PORT_ID, getForwardingPort());
         result.put(GATEWAY_IP_ADDRESS, getIpAddress().toString());
         result.put(GATEWAY_NETWORK_ADDRESS, getNetworkAddress().toString());
         result.put(GATEWAY_MAC_ADDRESS, getMacAddress().toString());
@@ -93,11 +101,12 @@ public class Gateway {
     public static class GatewayBuilder {
         private Long id;
         private String switchId;
-        private Integer portId;
+        private Integer devicePort;
         private String ipAddress;
         private String networkAddress;
         private String mask;
         private String macAddress;
+        private Integer forwardingPort;
 
         private GatewayBuilder() {
         }
@@ -112,13 +121,23 @@ public class Gateway {
             return this;
         }
 
-        public GatewayBuilder setPortId(OFPort portId) {
-            this.portId = portId.getPortNumber();
+        public GatewayBuilder setDevicePort(OFPort devicePort) {
+            this.devicePort = devicePort.getPortNumber();
             return this;
         }
 
-        public GatewayBuilder setPortId(Integer portId) {
-            this.portId = portId;
+        public GatewayBuilder setDevicePortId(Integer portId) {
+            this.devicePort = portId;
+            return this;
+        }
+
+        public GatewayBuilder setForwardingPort(OFPort forwardingPort) {
+            this.forwardingPort = forwardingPort.getPortNumber();
+            return this;
+        }
+
+        public GatewayBuilder setForwardingPort(Integer portId) {
+            this.forwardingPort = portId;
             return this;
         }
 

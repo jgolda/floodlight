@@ -17,21 +17,7 @@
 
 package net.floodlightcontroller.devicemanager.internal;
 
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -56,13 +42,7 @@ import net.floodlightcontroller.core.util.ListenerDispatcher;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
-import net.floodlightcontroller.devicemanager.IDevice;
-import net.floodlightcontroller.devicemanager.IDeviceService;
-import net.floodlightcontroller.devicemanager.IEntityClass;
-import net.floodlightcontroller.devicemanager.IEntityClassListener;
-import net.floodlightcontroller.devicemanager.IEntityClassifierService;
-import net.floodlightcontroller.devicemanager.IDeviceListener;
-import net.floodlightcontroller.devicemanager.SwitchPort;
+import net.floodlightcontroller.devicemanager.*;
 import net.floodlightcontroller.devicemanager.internal.DeviceSyncRepresentation.SyncEntity;
 import net.floodlightcontroller.devicemanager.web.DeviceRoutable;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LDUpdate;
@@ -210,6 +190,10 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 	 * This is the primary entity index that contains all entities
 	 */
 	protected DeviceUniqueIndex primaryIndex;
+
+	private DeviceUniqueIndex ipAddressIndex;
+
+	private IEntityClassifierService ipAddressClassifier;
 
 	/**
 	 * This stores secondary indices over the fields in the devices
@@ -853,6 +837,8 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 			throws FloodlightModuleException {
 		isMaster = (floodlightProvider.getRole() == HARole.ACTIVE);
 		primaryIndex = new DeviceUniqueIndex(entityClassifier.getKeyFields());
+		ipAddressClassifier = new IpAddressEntityClassifier();
+		ipAddressIndex = new DeviceUniqueIndex(ipAddressClassifier.getKeyFields());
 		secondaryIndexMap = new HashMap<EnumSet<DeviceField>, DeviceIndex>();
 
 		deviceMap = new ConcurrentHashMap<Long, Device>();
@@ -864,7 +850,6 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		floodlightProvider.addHAListener(this.haListenerDelegate);
 		if (topology != null)
 			topology.addListener(this);
-		entityClassifier.addListener(this);
 
 		ScheduledExecutorService ses = threadPool.getScheduledExecutor();
 		Runnable ecr = new Runnable() {
@@ -1348,6 +1333,17 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		return deviceMap.get(deviceKey);
 	}
 
+	@Override
+	public Optional<IDevice> findByIpAddress(IPv4Address ip) {
+		Entity entity = new Entity(MacAddress.NONE, VlanVid.ZERO, ip, IPv6Address.NONE, DatapathId.NONE, OFPort.ANY, new Date());
+		Long key = ipAddressIndex.findByEntity(entity);
+		if (key == null) {
+			logger.info("entity with ip: " + ip + " not found");
+			return Optional.empty();
+		}
+		return Optional.ofNullable(deviceMap.get(key));
+	}
+
 	/**
 	 * Get a destination device using entity fields that corresponds with
 	 * the given source device.  The source device is important since
@@ -1391,6 +1387,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		IEntityClass entityClass = entityClassifier.classifyEntity(entity);
 		Device device = new Device(this, deviceKey, entity, entityClass);
 		primaryIndex.updateIndex(device, deviceKey);
+		ipAddressIndex.updateIndex(device, deviceKey);
 		return deviceMap.put(deviceKey, device);
 	}
 
@@ -1800,6 +1797,9 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 	 private boolean updateIndices(Device device, Long deviceKey) {
 		 if (!primaryIndex.updateIndex(device, deviceKey)) {
 			 return false;
+		 }
+		 if (!ipAddressIndex.updateIndex(device, deviceKey)) {
+		 	return false;
 		 }
 		 IEntityClass entityClass = device.getEntityClass();
 		 ClassState classState = getClassState(entityClass);

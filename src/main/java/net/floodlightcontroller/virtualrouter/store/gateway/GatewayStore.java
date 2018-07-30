@@ -23,7 +23,7 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
 
     private IStorageSourceService storage;
     private Map<IPv4Address, Gateway> gatewayIpMap;
-    private Map<MacAddress, Gateway> gatewayMacMap;
+    private Map<IPv4AddressWithMask, Gateway> networkToGatewayMap;
     private Map<DatapathId, Set<Gateway>> gatewaySwitchMap;
     private IDeviceService deviceService;
     private IOFSwitchService switchService;
@@ -70,9 +70,8 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
 
         gatewayIpMap = gateways.stream()
                 .collect(Collectors.toMap(Gateway::getIpAddress, gateway -> gateway));
-        gatewayMacMap = gateways.stream()
-                .collect(Collectors.toMap(Gateway::getMacAddress, gateway -> gateway));
-
+        networkToGatewayMap = gateways.stream()
+                .collect(Collectors.toMap(Gateway::getNetworkAddress, gateway -> gateway));
         gatewaySwitchMap = gateways.stream()
                 .collect(Collectors.groupingBy(Gateway::getSwitchId, Collectors.toSet()));
         registerGatewayDevices();
@@ -95,7 +94,8 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
 
         Map<String, Object> record124 = Gateway.builder()
                 .setSwitchId("00:00:08:00:27:99:00:34")
-                .setPortId(OFPort.of(3))
+                .setDevicePort(OFPort.of(3))
+                .setForwardingPort(OFPort.of(3))
                 .setIpAddress(dummyIp124.toString())
                 .setNetMask("255.255.255.0")
                 .setMacAddress(dummyMac124.toString())
@@ -111,7 +111,8 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
 
         Map<String, Object> record122 = Gateway.builder()
                 .setSwitchId("00:00:08:00:27:99:00:34")
-                .setPortId(OFPort.of(3))
+                .setDevicePort(OFPort.of(3))
+                .setForwardingPort(OFPort.of(2))
                 .setIpAddress(dummyIp122.toString())
                 .setNetMask("255.255.255.0")
                 .setMacAddress(dummyMac122.toString())
@@ -126,6 +127,12 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
     @Override
     public Optional<Gateway> getGateway(IPv4Address address, DatapathId switchId) {
         return Optional.ofNullable(gatewayIpMap.get(address));
+    }
+
+    @Override
+    public Optional<Gateway> getGateway(IPv4AddressWithMask networkAddress, DatapathId switchId) {
+        return Optional.ofNullable(networkToGatewayMap.get(networkAddress))
+                .filter(gateway -> switchId == null || switchId.equals(gateway.getSwitchId()));
     }
 
     @Override
