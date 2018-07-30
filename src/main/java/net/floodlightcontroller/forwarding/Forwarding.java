@@ -167,6 +167,10 @@ public class Forwarding extends DefaultOFSwitchListener implements IFloodlightMo
         for (int indx = switchPortList.size() - 1; indx > 0; indx -= 2) {
             // indx and indx-1 will always have the same switch DPID.
             DatapathId switchDPID = switchPortList.get(indx).getNodeId();
+            if (!switchDPID.equals(pinSwitch)) {
+                log.info("Request originated from " + pinSwitch + ". Skipping configuration for: " + switchDPID);
+                continue;
+            }
             IOFSwitch sw = switchService.getSwitch(switchDPID);
 
             if (sw == null) {
@@ -240,14 +244,12 @@ public class Forwarding extends DefaultOFSwitchListener implements IFloodlightMo
                 fmb.setTableId(FLOWMOD_DEFAULT_TABLE_ID);
             }
 
-            if (log.isTraceEnabled()) {
                 log.info("Pushing Route flowmod routeIndx={} " +
                                 "sw={} inPort={} outPort={}",
                         new Object[] {indx,
                                 sw,
                                 fmb.getMatch().get(MatchField.IN_PORT),
                                 outPort });
-            }
 
             if (OFDPAUtils.isOFDPASwitch(sw)) {
                 OFDPAUtils.addLearningSwitchFlow(sw, cookie,
@@ -734,7 +736,7 @@ public class Forwarding extends DefaultOFSwitchListener implements IFloodlightMo
 
         U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
         U64 cookie = makeForwardingCookie(decision, flowSetId);
-        Path path = routingEngineService.getPath(srcSw, 
+        Path path = routingEngineService.getPath(srcSw,
                 srcPort,
                 dstAp.getNodeId(),
                 dstAp.getPortId());
@@ -742,16 +744,14 @@ public class Forwarding extends DefaultOFSwitchListener implements IFloodlightMo
         Match m = createMatchFromPacket(sw, srcPort, pi, cntx);
 
         if (! path.getPath().isEmpty()) {
-            if (log.isDebugEnabled()) {
-                log.debug("pushRoute inPort={} route={} " +
+                log.info("pushRoute inPort={} route={} " +
                         "destination={}:{}",
                         new Object[] { srcPort, path,
                                 dstAp.getNodeId(),
                                 dstAp.getPortId()});
                 log.info("Creating flow rules on the route, match rule: {}", m);
-            }
 
-            pushRoute(path, m, pi, sw.getId(), cookie, 
+            pushRoute(path, m, pi, sw.getId(), cookie,
                     cntx, requestFlowRemovedNotifn,
                     OFFlowModCommand.ADD, builder.build());
 
