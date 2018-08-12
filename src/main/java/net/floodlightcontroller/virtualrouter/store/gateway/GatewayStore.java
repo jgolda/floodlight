@@ -22,8 +22,8 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
     public static final String GATEWAY_TABLE_NAME = "virtual_gateways";
 
     private IStorageSourceService storage;
-    private Map<IPv4Address, Gateway> gatewayIpMap;
-    private Map<IPv4AddressWithMask, Gateway> networkToGatewayMap;
+    private Map<DatapathId, Map<IPv4Address, Gateway>> gatewayIpMapForSwitch;
+    private Map<DatapathId, Map<IPv4AddressWithMask, Gateway>> networkToGatewayMapForSwitch;
     private Map<DatapathId, Set<Gateway>> gatewaySwitchMap;
     private IDeviceService deviceService;
     private IOFSwitchService switchService;
@@ -63,15 +63,16 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
             logger.info("Finished setting up storage");
         }
 
-        pushDummyGatewayIfNotExist();
+//        pushDummyGatewayIfNotExistTwoNetworks();
+        pushDummyGatewayIfNotExistThreeNetworks();
 
         logger.info("Loading gateway cache's");
         List<Gateway> gateways = storage.executeQuery(GATEWAY_TABLE_NAME, GatewayColumns.ALL_COLUMNS, null, null, new GatewayRowMapper());
 
-        gatewayIpMap = gateways.stream()
-                .collect(Collectors.toMap(Gateway::getIpAddress, gateway -> gateway));
-        networkToGatewayMap = gateways.stream()
-                .collect(Collectors.toMap(Gateway::getNetworkAddress, gateway -> gateway));
+        gatewayIpMapForSwitch = gateways.stream()
+                .collect(Collectors.groupingBy(Gateway::getSwitchId, Collectors.toMap(Gateway::getIpAddress, gateway -> gateway)));
+        networkToGatewayMapForSwitch = gateways.stream()
+                .collect(Collectors.groupingBy(Gateway::getSwitchId, Collectors.toMap(Gateway::getNetworkAddress, gateway -> gateway)));
         gatewaySwitchMap = gateways.stream()
                 .collect(Collectors.groupingBy(Gateway::getSwitchId, Collectors.toSet()));
         registerGatewayDevices();
@@ -88,7 +89,7 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
         });
     }
 
-    private void pushDummyGatewayIfNotExist() {
+    private void pushDummyGatewayIfNotExistTwoNetworks() {
         final IPv4Address dummyIp124 = IPv4Address.of("192.168.124.1");
         final MacAddress dummyMac124 = MacAddress.of("08:00:27:eb:3d:ce");
 
@@ -124,24 +125,83 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
         storage.insertRow(GATEWAY_TABLE_NAME, record122);
     }
 
+    private void pushDummyGatewayIfNotExistThreeNetworks() {
+        final IPv4Address dummyIp124 = IPv4Address.of("192.168.124.1");
+        final MacAddress dummyMac124 = MacAddress.of("08:00:27:eb:3d:ce");
+
+        Map<String, Object> record124 = Gateway.builder()
+                .setSwitchId("00:00:08:00:27:99:00:34")
+                .setDevicePort(OFPort.of(3))
+                .setForwardingPort(OFPort.of(3))
+                .setIpAddress(dummyIp124.toString())
+                .setNetMask("255.255.255.0")
+                .setMacAddress(dummyMac124.toString())
+                .build()
+                .toRecord();
+
+        record124.put(GatewayColumns.ID, 124L);
+
+        storage.insertRow(GATEWAY_TABLE_NAME, record124);
+
+        final IPv4Address dummyIp1251 = IPv4Address.of("192.168.125.1");
+        final MacAddress dummyMac1251 = MacAddress.of("08:00:27:99:00:34");
+
+        Map<String, Object> record1251 = Gateway.builder()
+                .setSwitchId("00:00:08:00:27:99:00:34")
+                .setDevicePort(OFPort.of(3))
+                .setForwardingPort(OFPort.of(2))
+                .setIpAddress(dummyIp1251.toString())
+                .setNetMask("255.255.255.0")
+                .setMacAddress(dummyMac1251.toString())
+                .build()
+                .toRecord();
+
+        record1251.put(GatewayColumns.ID, 1251L);
+
+        storage.insertRow(GATEWAY_TABLE_NAME, record1251);
+
+        final IPv4Address dummyIp1252 = IPv4Address.of("192.168.125.2");
+        final MacAddress dummyMac1252 = MacAddress.of("08:00:27:60:f9:01");
+
+        Map<String, Object> record1252 = Gateway.builder()
+                .setSwitchId("00:00:08:00:27:1b:a2:7c")
+                .setDevicePort(OFPort.of(3))
+                .setForwardingPort(OFPort.of(2))
+                .setIpAddress(dummyIp1252.toString())
+                .setNetMask("255.255.255.0")
+                .setMacAddress(dummyMac1252.toString())
+                .build()
+                .toRecord();
+
+        record1252.put(GatewayColumns.ID, 1252L);
+
+        storage.insertRow(GATEWAY_TABLE_NAME, record1252);
+
+        final IPv4Address dummyIp126 = IPv4Address.of("192.168.126.1");
+        final MacAddress dummyMac126 = MacAddress.of("08:00:27:1b:a2:7c");
+
+        Map<String, Object> record126 = Gateway.builder()
+                .setSwitchId("00:00:08:00:27:1b:a2:7c")
+                .setDevicePort(OFPort.of(3))
+                .setForwardingPort(OFPort.of(3))
+                .setIpAddress(dummyIp126.toString())
+                .setNetMask("255.255.255.0")
+                .setMacAddress(dummyMac126.toString())
+                .build()
+                .toRecord();
+
+        record126.put(GatewayColumns.ID, 126L);
+
+        storage.insertRow(GATEWAY_TABLE_NAME, record126);
+    }
+
     @Override
     public Optional<Gateway> getGateway(IPv4Address address, DatapathId switchId) {
-        return Optional.ofNullable(gatewayIpMap.get(address));
+        return Optional.ofNullable(gatewayIpMapForSwitch.getOrDefault(switchId, Collections.emptyMap()).get(address));
     }
 
     @Override
     public Optional<Gateway> getGateway(IPv4AddressWithMask networkAddress, DatapathId switchId) {
-        return Optional.ofNullable(networkToGatewayMap.get(networkAddress))
-                .filter(gateway -> switchId == null || switchId.equals(gateway.getSwitchId()));
-    }
-
-    @Override
-    public boolean existGateway(DatapathId switchId) {
-        return gatewaySwitchMap.containsKey(switchId) && ! gatewaySwitchMap.get(switchId).isEmpty();
-    }
-
-    @Override
-    public Set<Gateway> getGatewaysRegsiteredOnSwitch(DatapathId switchId) {
-        return gatewaySwitchMap.getOrDefault(switchId, Collections.emptySet());
+        return Optional.ofNullable(networkToGatewayMapForSwitch.getOrDefault(switchId, Collections.emptyMap()).get(networkAddress));
     }
 }

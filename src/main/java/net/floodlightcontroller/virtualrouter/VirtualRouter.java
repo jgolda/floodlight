@@ -1,7 +1,6 @@
 package net.floodlightcontroller.virtualrouter;
 
 import net.floodlightcontroller.core.*;
-import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -12,10 +11,7 @@ import net.floodlightcontroller.virtualrouter.handlers.ICMPPacketHandler;
 import net.floodlightcontroller.virtualrouter.handlers.NullHandler;
 import net.floodlightcontroller.virtualrouter.handlers.PacketHandler;
 import net.floodlightcontroller.virtualrouter.store.gateway.GatewayStoreService;
-import org.apache.commons.collections4.CollectionUtils;
 import org.projectfloodlight.openflow.protocol.*;
-import org.projectfloodlight.openflow.protocol.match.MatchField;
-import org.projectfloodlight.openflow.types.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,7 +28,6 @@ public class VirtualRouter implements IFloodlightModule, IVirtualRouter, IOFMess
     private GatewayStoreService gatewayStore;
 
     private Map<String, PacketHandler> PACKET_HANDLERS = new HashMap<>();
-    private IOFSwitchService switchService;
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
@@ -44,76 +39,7 @@ public class VirtualRouter implements IFloodlightModule, IVirtualRouter, IOFMess
         logger.info("Initializing virtual router module");
         floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
         gatewayStore = context.getServiceImpl(GatewayStoreService.class);
-        switchService = context.getServiceImpl(IOFSwitchService.class);
         buildHandlerMap();
-//        pushForwardingRulesForDirectlyAttachedNetworks();
-    }
-
-    private void pushForwardingRulesForDirectlyAttachedNetworks() {
-        // dummy implementation
-//        Set<DatapathId> switchIds = switchService.getAllSwitchDpids();
-//        List<DatapathId> switchesWithDefinedGateways = switchIds.stream()
-//                .filter(datapath -> gatewayStore.existGateway(datapath))
-//                // TODO: [jgolda] przefiltrować po regułach routingu. teraz jest dummy
-//                .collect(Collectors.toList());
-//        for ( DatapathId switchId : switchesWithDefinedGateways ) {
-//            IOFSwitch aSwitch = switchService.getSwitch(switchId);
-//            aSwitch.getOFFactory()
-//        }
-
-        // TODO: [jgolda] to chyba nie powinno być zahardkodowane
-        switchService.addOFSwitchListener(new DefaultOFSwitchListener() {
-            @Override
-            public void switchAdded(DatapathId switchId) {
-                Set<Gateway> gateways = gatewayStore.getGatewaysRegsiteredOnSwitch(switchId);
-                if ( CollectionUtils.isNotEmpty(gateways) ) {
-                    IOFSwitch aSwitch = switchService.getSwitch(switchId);
-                }
-                DatapathId expectedDatapathId = DatapathId.of("00:00:08:00:27:99:00:34");
-                if (expectedDatapathId.equals(switchId)) {
-                    IOFSwitch aSwitch = switchService.getSwitch(expectedDatapathId);
-                    TableId firstTable = aSwitch.getTables().iterator().next();
-                    OFFactory ofFactory = aSwitch.getOFFactory();
-                    OFPort firstOutputPort = OFPort.of(2);
-                    OFFlowAdd add = ofFactory.buildFlowAdd()
-                            .setTableId(firstTable)
-                            .setPriority(1)
-                            .setMatch(ofFactory.buildMatch()
-                                    .setExact(MatchField.ETH_TYPE, EthType.IPv4)
-                                    .setExact(MatchField.IPV4_DST, IPv4Address.of("192.168.122.105"))
-                                    .build()
-                            )
-                            .setActions(Arrays.asList(
-                                    ofFactory.actions().setField(ofFactory.oxms().ethSrc(MacAddress.of("08:00:27:99:00:34"))),
-                                    ofFactory.actions().setField(ofFactory.oxms().ethDst(MacAddress.of("08:00:27:d2:de:dc"))),
-                                    ofFactory.actions().output(firstOutputPort, 2048)
-                            ))
-                            .setIdleTimeout(10)
-                            .build();
-
-                    aSwitch.write(add);
-
-                    OFPort secondOutputPort = OFPort.of(3);
-                    OFFlowAdd add2 = ofFactory.buildFlowAdd()
-                            .setTableId(firstTable)
-                            .setPriority(2)
-                            .setMatch(ofFactory.buildMatch()
-                                    .setExact(MatchField.ETH_TYPE, EthType.IPv4)
-                                    .setExact(MatchField.IPV4_DST, IPv4Address.of("192.168.124.115"))
-                                    .build()
-                            )
-                            .setActions(Arrays.asList(
-                                    ofFactory.actions().setField(ofFactory.oxms().ethSrc(MacAddress.of("08:00:27:eb:3d:ce"))),
-                                    ofFactory.actions().setField(ofFactory.oxms().ethDst(MacAddress.of("08:00:27:49:28:8e"))),
-                                    ofFactory.actions().output(secondOutputPort, 2048)
-                            ))
-                            .setIdleTimeout(10)
-                            .build();
-
-                    aSwitch.write(add2);
-                }
-            }
-        });
     }
 
     private void buildHandlerMap() {
