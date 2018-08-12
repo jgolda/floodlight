@@ -24,6 +24,7 @@ net.floodlightcontroller.linkdiscovery.internal.LinkDiscoveryManager
 net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl
 net.floodlightcontroller.virtualrouter.VirtualRouter
 net.floodlightcontroller.virtualrouter.store.gateway.GatewayStore
+net.floodlightcontroller.virtualrouter.store.RouteStore
 net.floodlightcontroller.firewall.Firewall
 net.floodlightcontroller.accesscontrollist.ACL
 net.floodlightcontroller.dhcpserver.DHCPServer

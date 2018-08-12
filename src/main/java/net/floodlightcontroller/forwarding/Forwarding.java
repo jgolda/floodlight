@@ -41,7 +41,9 @@ import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.*;
 
 import net.floodlightcontroller.virtualrouter.Gateway;
+import net.floodlightcontroller.virtualrouter.store.RouteStoreService;
 import net.floodlightcontroller.virtualrouter.store.gateway.GatewayStoreService;
+import net.floodlightcontroller.virtualrouter.store.route.RoutingRule;
 import org.projectfloodlight.openflow.protocol.*;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
@@ -121,6 +123,7 @@ public class Forwarding extends DefaultOFSwitchListener implements IFloodlightMo
     private static int OFMESSAGE_DAMPER_TIMEOUT = 250; // ms
     private PacketMatcher packetMatcher;
     private MatchingConfig matchingConfig;
+    private RouteStoreService routingRuleStore;
 
     @Override
     public String getName() {
@@ -655,13 +658,11 @@ public class Forwarding extends DefaultOFSwitchListener implements IFloodlightMo
             Ethernet ethernet = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
             if (EthType.IPv4.equals(ethernet.getEtherType())) {
                 IPv4 ipPacket = (IPv4) ethernet.getPayload();
-                IPv4Address destinationAddress = ipPacket.getDestinationAddress();
-                IPv4AddressWithMask masked = IPv4AddressWithMask.of(destinationAddress, IPv4Address.of("255.255.255.0"));
+                IPv4AddressWithMask masked = maskIpAddress(ipPacket.getDestinationAddress());
                 log.info("searching for gateway for network: " + masked + ", for switch: " + sw.getId());
                 log.info("seraching for target device for ip : " + ipPacket.getDestinationAddress());
-                Optional<Gateway> optionalOutputGateway = gatewayStore.getGateway(masked, sw.getId());
-                // TODO: [jgolda] sprawdzenie, czy target device leży w sieci bezp podłączonej. Jeżeli tak, to wykonaj istniejący blok kodu, jeżeli nie, to szukaj po routach
-                if ( targetHostBelongsToDirectlyAttachedNetwork() ) {
+                if ( targetHostBelongsToDirectlyAttachedNetwork(sw.getId(), ipPacket) ) {
+                    Optional<Gateway> optionalOutputGateway = gatewayStore.getGateway(masked, sw.getId());
                     Optional<IDevice> optionalTargetDevice = deviceManagerService.findByIpAddress(ipPacket.getDestinationAddress());
                     if ( optionalOutputGateway.isPresent() && optionalTargetDevice.isPresent() ) {
                         builder.routedRequest();
@@ -676,10 +677,24 @@ public class Forwarding extends DefaultOFSwitchListener implements IFloodlightMo
                         builder.setTargetMac(optionalTargetDevice.get().getMACAddress());
                     }
                 } else {
-                    // TODO: [jgolda] przeszukać reguły routingu (adres sieci) i jeżeli znajdzie się odpowiednią sieć:
-                    // TODO: [jgolda]  - ustawić port odpowiedniego gateway'a istniejącego na tym switchu
-                    // TODO: [jgolda]  - ustawić target mac na podstawie ip następnego hopa
-                    // TODO: [jgolda]  - ustawić mac wychodzącego interfejsu
+                    log.info("Target ip address: " + ipPacket.getDestinationAddress() + " not found in directly attached networks for switch " + sw.getId());
+                    IPv4AddressWithMask targetNetworkAddress = maskIpAddress(ipPacket.getDestinationAddress());
+                    Optional<RoutingRule> optionalRule = routingRuleStore.findRule(sw.getId(), targetNetworkAddress);
+                    if (optionalRule.isPresent()) {
+                        RoutingRule rule = optionalRule.get();
+                        log.info("Found associated rule [" + rule.getNetworkAddress() + " -> " + rule.getTargetDeviceAddress() + "]");
+                        Optional<Gateway> optionalGateway = gatewayStore.getGateway(maskIpAddress(rule.getTargetDeviceAddress()), sw.getId());
+                        Optional<IDevice> optionalDevice = deviceManagerService.findByIpAddress(rule.getTargetDeviceAddress());
+                        if (optionalDevice.isPresent() && optionalGateway.isPresent()) {
+                            log.info("Found output device and gateway");
+                            IDevice device = optionalDevice.get();
+                            Gateway gateway = optionalGateway.get();
+                            builder.routedRequest()
+                                    .setTargetMac(device.getMACAddress())
+                                    .setOutputMac(gateway.getMacAddress())
+                                    .setOutputPort(gateway.getForwardingPort());
+                        }
+                    }
                 }
             }
         }
@@ -773,8 +788,12 @@ public class Forwarding extends DefaultOFSwitchListener implements IFloodlightMo
         } /* else no path was found */
     }
 
-    private boolean targetHostBelongsToDirectlyAttachedNetwork() {
-        return true;
+    private IPv4AddressWithMask maskIpAddress(IPv4Address destinationAddress) {
+        return IPv4AddressWithMask.of(destinationAddress, IPv4Address.of("255.255.255.0"));
+    }
+
+    private boolean targetHostBelongsToDirectlyAttachedNetwork(DatapathId arrivalSwitch, IPv4 ipPacket) {
+        return gatewayStore.getGateway(maskIpAddress(ipPacket.getDestinationAddress()), arrivalSwitch).isPresent();
     }
 
     /**
@@ -858,7 +877,8 @@ public class Forwarding extends DefaultOFSwitchListener implements IFloodlightMo
                 ITopologyService.class,
                 IDebugCounterService.class,
                 ILinkDiscoveryService.class,
-                GatewayStoreService.class
+                GatewayStoreService.class,
+                RouteStoreService.class
         );
     }
 
@@ -875,6 +895,7 @@ public class Forwarding extends DefaultOFSwitchListener implements IFloodlightMo
         this.switchService = context.getServiceImpl(IOFSwitchService.class);
         this.linkService = context.getServiceImpl(ILinkDiscoveryService.class);
         this.gatewayStore = context.getServiceImpl(GatewayStoreService.class);
+        this.routingRuleStore = context.getServiceImpl(RouteStoreService.class);
 
         MatchingConfig.ConfigBuilder configBuilder = MatchingConfig.builder();
         flowSetIdRegistry = FlowSetIdRegistry.getInstance();
