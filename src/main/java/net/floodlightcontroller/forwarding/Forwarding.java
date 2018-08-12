@@ -660,18 +660,26 @@ public class Forwarding extends DefaultOFSwitchListener implements IFloodlightMo
                 log.info("searching for gateway for network: " + masked + ", for switch: " + sw.getId());
                 log.info("seraching for target device for ip : " + ipPacket.getDestinationAddress());
                 Optional<Gateway> optionalOutputGateway = gatewayStore.getGateway(masked, sw.getId());
-                Optional<IDevice> optionalTargetDevice = deviceManagerService.findByIpAddress(ipPacket.getDestinationAddress());
-                if (optionalOutputGateway.isPresent() && optionalTargetDevice.isPresent()) {
-                    builder.routedRequest();
-                    Gateway gateway = optionalOutputGateway.get();
-                    log.info("found output gateway for packet: " + gateway.getIpAddress());
-                    OFPort outputPort = gateway.getForwardingPort();
-                    builder.setOutputPort(outputPort);
-                    MacAddress outputMacAddress = gateway.getMacAddress();
-                    builder.setOutputMac(outputMacAddress);
+                // TODO: [jgolda] sprawdzenie, czy target device leży w sieci bezp podłączonej. Jeżeli tak, to wykonaj istniejący blok kodu, jeżeli nie, to szukaj po routach
+                if ( targetHostBelongsToDirectlyAttachedNetwork() ) {
+                    Optional<IDevice> optionalTargetDevice = deviceManagerService.findByIpAddress(ipPacket.getDestinationAddress());
+                    if ( optionalOutputGateway.isPresent() && optionalTargetDevice.isPresent() ) {
+                        builder.routedRequest();
+                        Gateway gateway = optionalOutputGateway.get();
+                        log.info("found output gateway for packet: " + gateway.getIpAddress());
+                        OFPort outputPort = gateway.getForwardingPort();
+                        builder.setOutputPort(outputPort);
+                        MacAddress outputMacAddress = gateway.getMacAddress();
+                        builder.setOutputMac(outputMacAddress);
 
-                    log.info("found target device in index for ip: " + ipPacket.getDestinationAddress());
-                    builder.setTargetMac(optionalTargetDevice.get().getMACAddress());
+                        log.info("found target device in index for ip: " + ipPacket.getDestinationAddress());
+                        builder.setTargetMac(optionalTargetDevice.get().getMACAddress());
+                    }
+                } else {
+                    // TODO: [jgolda] przeszukać reguły routingu (adres sieci) i jeżeli znajdzie się odpowiednią sieć:
+                    // TODO: [jgolda]  - ustawić port odpowiedniego gateway'a istniejącego na tym switchu
+                    // TODO: [jgolda]  - ustawić target mac na podstawie ip następnego hopa
+                    // TODO: [jgolda]  - ustawić mac wychodzącego interfejsu
                 }
             }
         }
@@ -763,6 +771,10 @@ public class Forwarding extends DefaultOFSwitchListener implements IFloodlightMo
                 flowSetIdRegistry.registerFlowSetId(npt, flowSetId);
             }
         } /* else no path was found */
+    }
+
+    private boolean targetHostBelongsToDirectlyAttachedNetwork() {
+        return true;
     }
 
     /**

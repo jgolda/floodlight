@@ -102,6 +102,8 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 	private IStoreClient<String, DeviceSyncRepresentation> storeClient;
 	private DeviceSyncManager deviceSyncManager;
 
+	private Map<DatapathId, Set<OFPort>> virtualInterfaceAttachmentPoints = new HashMap<>();
+
 	/**
 	 * Debug Counters
 	 */
@@ -1149,6 +1151,9 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 	 */
 	public boolean isValidAttachmentPoint(DatapathId switchDPID,
 			OFPort switchPort) {
+		if ( isVirtualInterfaceAttachmentPoint(switchDPID, switchPort) ) {
+			return true;
+		}
 		if (topology.isAttachmentPointPort(switchDPID, switchPort) == false) {
 			logger.info("-------- " + switchDPID + ", " + switchPort + " NIE JEST WALIDNYM attachment pointem  1");
 			return false;
@@ -1161,6 +1166,10 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 
 		logger.info("-------- " + switchDPID + ", " + switchPort + " jest walidnym attachment pointem");
 		return true;
+	}
+
+	private boolean isVirtualInterfaceAttachmentPoint(DatapathId switchDPID, OFPort switchPort) {
+		return virtualInterfaceAttachmentPoints.getOrDefault(switchDPID, Collections.emptySet()).contains(switchPort);
 	}
 
 	/**
@@ -1385,10 +1394,17 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 	public Device registerDevice(Entity entity) {
 		Long deviceKey = computeEntityKey(entity);
 		IEntityClass entityClass = entityClassifier.classifyEntity(entity);
+		registerAttachmentPoint(entity);
 		Device device = new Device(this, deviceKey, entity, entityClass);
 		primaryIndex.updateIndex(device, deviceKey);
 		ipAddressIndex.updateIndex(device, deviceKey);
 		return deviceMap.put(deviceKey, device);
+	}
+
+	private void registerAttachmentPoint(Entity entity) {
+		Set<OFPort> attachmentPoints = virtualInterfaceAttachmentPoints.getOrDefault(entity.getSwitchDPID(), new HashSet<>());
+		attachmentPoints.add(entity.getSwitchPort());
+		virtualInterfaceAttachmentPoints.put(entity.getSwitchDPID(), attachmentPoints);
 	}
 
 	private Long computeEntityKey(Entity entity) {
