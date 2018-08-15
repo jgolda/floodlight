@@ -221,6 +221,7 @@ public class Forwarding extends DefaultOFSwitchListener implements IFloodlightMo
                 OFFactory factory = sw.getOFFactory();
                 actions.add(factory.actions().setField(factory.oxms().ethSrc(routingData.getOutputMac())));
                 actions.add(factory.actions().setField(factory.oxms().ethDst(routingData.getTargetMac())));
+                actions.add(factory.actions().decNwTtl());
                 aob.setPort(routingData.getOutputPort());
             }
             aob.setMaxLen(Integer.MAX_VALUE);
