@@ -35,18 +35,18 @@ public class ARPPacketHandler implements PacketHandler {
 
     @Override
     public IListener.Command handle(Ethernet inputEthernetFrame, IOFSwitch sw, OFPacketIn packetIn) {
-        logger.debug("handling arp message");
+        logger.info("handling arp message");
         ARP inputArpRequest = (ARP) inputEthernetFrame.getPayload();
-        logger.debug(String.format("ARP Operation: %s", inputArpRequest.getOpCode().toString()));
+        logger.info(String.format("ARP Operation: %s", inputArpRequest.getOpCode().toString()));
         String message = String.format("%s is asking for %s mac address. Source mac address: %s, arrived target mac address: %s", inputArpRequest.getSenderProtocolAddress(), inputArpRequest.getTargetProtocolAddress(), inputArpRequest.getSenderHardwareAddress(), inputArpRequest.getTargetHardwareAddress());
-        logger.debug(message);
+        logger.info(message);
         Optional<Gateway> optionalGateway = gatewayStore.getGateway(inputArpRequest.getTargetProtocolAddress(), sw.getId());
         if ( optionalGateway.isPresent()) {
             Gateway queriedGateway = optionalGateway.get();
-            logger.debug(String.format("Request for virtual gateway: %s", queriedGateway.getIpAddress()));
+            logger.info(String.format("Request for virtual gateway: %s, from switch: %s", queriedGateway.getIpAddress(), sw.getId()));
             OFPacketOut packetOut = createResponse(sw, packetIn, inputEthernetFrame, inputArpRequest, queriedGateway);
             sw.write(packetOut);
-            logger.debug("Successfully sent arp response");
+            logger.info(String.format("Successfully sent arp response: %s", packetOut));
             return IListener.Command.STOP;
         }
         return IListener.Command.CONTINUE;

@@ -64,7 +64,8 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
         }
 
 //        pushDummyGatewayIfNotExistTwoNetworks();
-        pushDummyGatewayIfNotExistThreeNetworks();
+        pushDummyGatewayIfNotExistTwoNetworksRouterOnLanSwitch();
+//        pushDummyGatewayIfNotExistThreeNetworks();
 
         logger.info("Loading gateway cache's");
         List<Gateway> gateways = storage.executeQuery(GATEWAY_TABLE_NAME, GatewayColumns.ALL_COLUMNS, null, null, new GatewayRowMapper());
@@ -107,7 +108,7 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
 
         storage.insertRow(GATEWAY_TABLE_NAME, record124);
 
-        final IPv4Address dummyIp122 = IPv4Address.of("192.168.122.1");
+        final IPv4Address dummyIp122 = IPv4Address.of("192.168.126.1");
         final MacAddress dummyMac122 = MacAddress.of("08:00:27:99:00:34");
 
         Map<String, Object> record122 = Gateway.builder()
@@ -120,9 +121,45 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
                 .build()
                 .toRecord();
 
-        record122.put(GatewayColumns.ID, 122L);
+        record122.put(GatewayColumns.ID, 126L);
 
         storage.insertRow(GATEWAY_TABLE_NAME, record122);
+    }
+
+    private void pushDummyGatewayIfNotExistTwoNetworksRouterOnLanSwitch() {
+        final IPv4Address dummyIp1252 = IPv4Address.of("192.168.124.1");
+        final MacAddress dummyMac1252 = MacAddress.of("08:00:27:60:f9:01");
+
+        Map<String, Object> record1252 = Gateway.builder()
+                .setSwitchId("00:00:08:00:27:1b:a2:7c")
+                .setDevicePort(OFPort.of(5))
+                .setForwardingPort(OFPort.of(6))
+                .setIpAddress(dummyIp1252.toString())
+                .setNetMask("255.255.255.0")
+                .setMacAddress(dummyMac1252.toString())
+                .build()
+                .toRecord();
+
+        record1252.put(GatewayColumns.ID, 1252L);
+
+        storage.insertRow(GATEWAY_TABLE_NAME, record1252);
+
+        final IPv4Address dummyIp126 = IPv4Address.of("192.168.126.1");
+        final MacAddress dummyMac126 = MacAddress.of("08:00:27:1b:a2:7c");
+
+        Map<String, Object> record126 = Gateway.builder()
+                .setSwitchId("00:00:08:00:27:1b:a2:7c")
+                .setDevicePort(OFPort.of(5))
+                .setForwardingPort(OFPort.of(5))
+                .setIpAddress(dummyIp126.toString())
+                .setNetMask("255.255.255.0")
+                .setMacAddress(dummyMac126.toString())
+                .build()
+                .toRecord();
+
+        record126.put(GatewayColumns.ID, 126L);
+
+        storage.insertRow(GATEWAY_TABLE_NAME, record126);
     }
 
     private void pushDummyGatewayIfNotExistThreeNetworks() {
@@ -197,7 +234,8 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
 
     @Override
     public Optional<Gateway> getGateway(IPv4Address address, DatapathId switchId) {
-        return Optional.ofNullable(gatewayIpMapForSwitch.getOrDefault(switchId, Collections.emptyMap()).get(address));
+        Map<IPv4Address, Gateway> allGateways = gatewayIpMapForSwitch.values().stream().map(gatewayMap -> gatewayMap.values()).flatMap(value -> value.stream()).collect(Collectors.toMap(item -> item.getIpAddress(), item -> item));
+        return Optional.ofNullable(allGateways.get(address));
     }
 
     @Override
