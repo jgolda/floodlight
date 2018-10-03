@@ -38,13 +38,13 @@ public class ICMPPacketHandler implements PacketHandler {
     public IListener.Command handle(Ethernet inputEthernetFrame, IOFSwitch sw, OFPacketIn packetIn) {
         IPv4 inputIpPacket = (IPv4) inputEthernetFrame.getPayload();
         if ( inputIpPacket.getPayload() instanceof ICMP ) {
-            logger.debug("handling icmp packet");
+            logger.info("handling icmp packet");
             ICMP inputIcmpPacket = (ICMP) inputIpPacket.getPayload();
-            logger.debug(inputIpPacket.getSourceAddress() + " is icmping " + inputIpPacket.getDestinationAddress() + ". ICMP type: " + inputIcmpPacket.getType().name() + ". ICMP code: " + inputIcmpPacket.getCode().name() + ". Received from switch: " + sw.getId());
+            logger.info(inputIpPacket.getSourceAddress() + " is icmping " + inputIpPacket.getDestinationAddress() + ". ICMP type: " + inputIcmpPacket.getType().name() + ". ICMP code: " + inputIcmpPacket.getCode().name() + ". Received from switch: " + sw.getId());
             Optional<Gateway> optionalGateway = gatewayStore.getGateway(inputIpPacket.getDestinationAddress(), sw.getId());
             if (ICMP.Code.ECHO_REQUEST.equals(inputIcmpPacket.getCode()) && optionalGateway.isPresent()) {
                 Gateway queriedGateway = optionalGateway.get();
-                logger.debug("responding to icmp echo request packet");
+                logger.info("responding to icmp echo request packet");
                 IPacket icmpResponse = new ICMP()
                         .setCode(ICMP.Code.ECHO_REPLY)
                         .setPayload(inputIcmpPacket.getPayload());
@@ -66,7 +66,7 @@ public class ICMPPacketHandler implements PacketHandler {
 
                 OFPacketOut packetOut = createPacketOut(sw, packetIn, ethernetResponse);
                 sw.write(packetOut);
-                logger.debug("Successfully sent ICMP response");
+                logger.info("Successfully sent ICMP response");
                 return IListener.Command.STOP;
             }
         }

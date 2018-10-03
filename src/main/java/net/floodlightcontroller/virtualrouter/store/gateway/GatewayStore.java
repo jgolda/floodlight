@@ -63,8 +63,8 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
             logger.info("Finished setting up storage");
         }
 
-//        pushDummyGatewayIfNotExistTwoNetworks();
-        pushDummyGatewayIfNotExistThreeNetworks();
+        pushDummyGatewayIfNotExistTwoNetworks();
+//        pushDummyGatewayIfNotExistThreeNetworks();
 
         logger.info("Loading gateway cache's");
         List<Gateway> gateways = storage.executeQuery(GATEWAY_TABLE_NAME, GatewayColumns.ALL_COLUMNS, null, null, new GatewayRowMapper());
@@ -107,7 +107,7 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
 
         storage.insertRow(GATEWAY_TABLE_NAME, record124);
 
-        final IPv4Address dummyIp122 = IPv4Address.of("192.168.122.1");
+        final IPv4Address dummyIp122 = IPv4Address.of("192.168.126.1");
         final MacAddress dummyMac122 = MacAddress.of("08:00:27:99:00:34");
 
         Map<String, Object> record122 = Gateway.builder()
@@ -120,7 +120,7 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
                 .build()
                 .toRecord();
 
-        record122.put(GatewayColumns.ID, 122L);
+        record122.put(GatewayColumns.ID, 126L);
 
         storage.insertRow(GATEWAY_TABLE_NAME, record122);
     }
@@ -197,7 +197,8 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
 
     @Override
     public Optional<Gateway> getGateway(IPv4Address address, DatapathId switchId) {
-        return Optional.ofNullable(gatewayIpMapForSwitch.getOrDefault(switchId, Collections.emptyMap()).get(address));
+        Map<IPv4Address, Gateway> allGateways = gatewayIpMapForSwitch.values().stream().map(gatewayMap -> gatewayMap.values()).flatMap(value -> value.stream()).collect(Collectors.toMap(item -> item.getIpAddress(), item -> item));
+        return Optional.ofNullable(allGateways.get(address));
     }
 
     @Override
