@@ -166,7 +166,7 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
         Map<String, Object> record1252 = Gateway.builder()
                 .setSwitchId("00:00:08:00:27:1b:a2:7c")
                 .setDevicePort(OFPort.of(5))
-                .setForwardingPort(OFPort.of(4))
+                .setForwardingPort(OFPort.of(6))
                 .setIpAddress(dummyIp1252.toString())
                 .setNetMask("255.255.255.0")
                 .setMacAddress(dummyMac1252.toString())
