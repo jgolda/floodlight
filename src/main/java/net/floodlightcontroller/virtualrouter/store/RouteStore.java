@@ -42,10 +42,8 @@ public class RouteStore implements RouteStoreService, IFloodlightModule {
 
     @Override
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
-        RoutingRule to124 = new RoutingRule(IPv4AddressWithMask.of(IPv4Address.of("192.168.126.1"), IPv4Address.of("255.255.255.0")), IPv4Address.of("192.168.125.2"));
-        RoutingRule to126 = new RoutingRule(IPv4AddressWithMask.of(IPv4Address.of("192.168.124.1"), IPv4Address.of("255.255.255.0")), IPv4Address.of("192.168.125.1"));
+        RoutingRule to126 = new RoutingRule(IPv4AddressWithMask.of(IPv4Address.of("192.168.127.1"), IPv4Address.of("255.255.255.0")), IPv4Address.of("192.168.124.2"));
 
-        dummyRules.put(DatapathId.of("00:00:08:00:27:99:00:34"), Collections.singleton(to124));
         dummyRules.put(DatapathId.of("00:00:08:00:27:1b:a2:7c"), Collections.singleton(to126));
     }
 

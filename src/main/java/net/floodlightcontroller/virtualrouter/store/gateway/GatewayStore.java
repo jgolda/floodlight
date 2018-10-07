@@ -63,9 +63,7 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
             logger.info("Finished setting up storage");
         }
 
-//        pushDummyGatewayIfNotExistTwoNetworks();
-        pushDummyGatewayIfNotExistTwoNetworksRouterOnLanSwitch();
-//        pushDummyGatewayIfNotExistThreeNetworks();
+        pushDummyGatewayIfNotExistTwoNetworks();
 
         logger.info("Loading gateway cache's");
         List<Gateway> gateways = storage.executeQuery(GATEWAY_TABLE_NAME, GatewayColumns.ALL_COLUMNS, null, null, new GatewayRowMapper());
@@ -92,12 +90,12 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
 
     private void pushDummyGatewayIfNotExistTwoNetworks() {
         final IPv4Address dummyIp124 = IPv4Address.of("192.168.124.1");
-        final MacAddress dummyMac124 = MacAddress.of("08:00:27:eb:3d:ce");
+        final MacAddress dummyMac124 = MacAddress.of("08:00:27:60:f9:01");
 
         Map<String, Object> record124 = Gateway.builder()
-                .setSwitchId("00:00:08:00:27:99:00:34")
-                .setDevicePort(OFPort.of(3))
-                .setForwardingPort(OFPort.of(3))
+                .setSwitchId("00:00:08:00:27:1b:a2:7c")
+                .setDevicePort(OFPort.of(5))
+                .setForwardingPort(OFPort.of(4))
                 .setIpAddress(dummyIp124.toString())
                 .setNetMask("255.255.255.0")
                 .setMacAddress(dummyMac124.toString())
@@ -109,12 +107,12 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
         storage.insertRow(GATEWAY_TABLE_NAME, record124);
 
         final IPv4Address dummyIp122 = IPv4Address.of("192.168.126.1");
-        final MacAddress dummyMac122 = MacAddress.of("08:00:27:99:00:34");
+        final MacAddress dummyMac122 = MacAddress.of("08:00:27:1b:a2:7c");
 
         Map<String, Object> record122 = Gateway.builder()
-                .setSwitchId("00:00:08:00:27:99:00:34")
-                .setDevicePort(OFPort.of(3))
-                .setForwardingPort(OFPort.of(2))
+                .setSwitchId("00:00:08:00:27:1b:a2:7c")
+                .setDevicePort(OFPort.of(5))
+                .setForwardingPort(OFPort.of(5))
                 .setIpAddress(dummyIp122.toString())
                 .setNetMask("255.255.255.0")
                 .setMacAddress(dummyMac122.toString())
@@ -124,42 +122,6 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
         record122.put(GatewayColumns.ID, 126L);
 
         storage.insertRow(GATEWAY_TABLE_NAME, record122);
-    }
-
-    private void pushDummyGatewayIfNotExistTwoNetworksRouterOnLanSwitch() {
-        final IPv4Address dummyIp1252 = IPv4Address.of("192.168.124.1");
-        final MacAddress dummyMac1252 = MacAddress.of("08:00:27:60:f9:01");
-
-        Map<String, Object> record1252 = Gateway.builder()
-                .setSwitchId("00:00:08:00:27:1b:a2:7c")
-                .setDevicePort(OFPort.of(5))
-                .setForwardingPort(OFPort.of(6))
-                .setIpAddress(dummyIp1252.toString())
-                .setNetMask("255.255.255.0")
-                .setMacAddress(dummyMac1252.toString())
-                .build()
-                .toRecord();
-
-        record1252.put(GatewayColumns.ID, 1252L);
-
-        storage.insertRow(GATEWAY_TABLE_NAME, record1252);
-
-        final IPv4Address dummyIp126 = IPv4Address.of("192.168.126.1");
-        final MacAddress dummyMac126 = MacAddress.of("08:00:27:1b:a2:7c");
-
-        Map<String, Object> record126 = Gateway.builder()
-                .setSwitchId("00:00:08:00:27:1b:a2:7c")
-                .setDevicePort(OFPort.of(5))
-                .setForwardingPort(OFPort.of(5))
-                .setIpAddress(dummyIp126.toString())
-                .setNetMask("255.255.255.0")
-                .setMacAddress(dummyMac126.toString())
-                .build()
-                .toRecord();
-
-        record126.put(GatewayColumns.ID, 126L);
-
-        storage.insertRow(GATEWAY_TABLE_NAME, record126);
     }
 
     private void pushDummyGatewayIfNotExistThreeNetworks() {
