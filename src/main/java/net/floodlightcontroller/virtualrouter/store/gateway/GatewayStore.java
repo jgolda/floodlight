@@ -63,8 +63,7 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
             logger.info("Finished setting up storage");
         }
 
-//        pushDummyGatewayIfNotExistTwoNetworks();
-        pushDummyGatewayIfNotExistThreeNetworks();
+        pushDummyGatewayIfNotExist();
 
         logger.info("Loading gateway cache's");
         List<Gateway> gateways = storage.executeQuery(GATEWAY_TABLE_NAME, GatewayColumns.ALL_COLUMNS, null, null, new GatewayRowMapper());
@@ -89,94 +88,8 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
         });
     }
 
-    private void pushDummyGatewayIfNotExistTwoNetworks() {
-        final IPv4Address dummyIp124 = IPv4Address.of("192.168.124.1");
-        final MacAddress dummyMac124 = MacAddress.of("08:00:27:eb:3d:ce");
-
-        Map<String, Object> record124 = Gateway.builder()
-                .setSwitchId("00:00:08:00:27:99:00:34")
-                .setDevicePort(OFPort.of(3))
-                .setForwardingPort(OFPort.of(3))
-                .setIpAddress(dummyIp124.toString())
-                .setNetMask("255.255.255.0")
-                .setMacAddress(dummyMac124.toString())
-                .build()
-                .toRecord();
-
-        record124.put(GatewayColumns.ID, 124L);
-
-        storage.insertRow(GATEWAY_TABLE_NAME, record124);
-
-        final IPv4Address dummyIp122 = IPv4Address.of("192.168.122.1");
-        final MacAddress dummyMac122 = MacAddress.of("08:00:27:99:00:34");
-
-        Map<String, Object> record122 = Gateway.builder()
-                .setSwitchId("00:00:08:00:27:99:00:34")
-                .setDevicePort(OFPort.of(3))
-                .setForwardingPort(OFPort.of(2))
-                .setIpAddress(dummyIp122.toString())
-                .setNetMask("255.255.255.0")
-                .setMacAddress(dummyMac122.toString())
-                .build()
-                .toRecord();
-
-        record122.put(GatewayColumns.ID, 122L);
-
-        storage.insertRow(GATEWAY_TABLE_NAME, record122);
-    }
-
-    private void pushDummyGatewayIfNotExistThreeNetworks() {
-        final IPv4Address dummyIp124 = IPv4Address.of("192.168.124.1");
-        final MacAddress dummyMac124 = MacAddress.of("08:00:27:eb:3d:ce");
-
-        Map<String, Object> record124 = Gateway.builder()
-                .setSwitchId("00:00:08:00:27:99:00:34")
-                .setDevicePort(OFPort.of(3))
-                .setForwardingPort(OFPort.of(3))
-                .setIpAddress(dummyIp124.toString())
-                .setNetMask("255.255.255.0")
-                .setMacAddress(dummyMac124.toString())
-                .build()
-                .toRecord();
-
-        record124.put(GatewayColumns.ID, 124L);
-
-        storage.insertRow(GATEWAY_TABLE_NAME, record124);
-
-        final IPv4Address dummyIp1251 = IPv4Address.of("192.168.125.1");
-        final MacAddress dummyMac1251 = MacAddress.of("08:00:27:99:00:34");
-
-        Map<String, Object> record1251 = Gateway.builder()
-                .setSwitchId("00:00:08:00:27:99:00:34")
-                .setDevicePort(OFPort.of(3))
-                .setForwardingPort(OFPort.of(2))
-                .setIpAddress(dummyIp1251.toString())
-                .setNetMask("255.255.255.0")
-                .setMacAddress(dummyMac1251.toString())
-                .build()
-                .toRecord();
-
-        record1251.put(GatewayColumns.ID, 1251L);
-
-        storage.insertRow(GATEWAY_TABLE_NAME, record1251);
-
-        final IPv4Address dummyIp1252 = IPv4Address.of("192.168.125.2");
-        final MacAddress dummyMac1252 = MacAddress.of("08:00:27:60:f9:01");
-
-        Map<String, Object> record1252 = Gateway.builder()
-                .setSwitchId("00:00:08:00:27:1b:a2:7c")
-                .setDevicePort(OFPort.of(5))
-                .setForwardingPort(OFPort.of(4))
-                .setIpAddress(dummyIp1252.toString())
-                .setNetMask("255.255.255.0")
-                .setMacAddress(dummyMac1252.toString())
-                .build()
-                .toRecord();
-
-        record1252.put(GatewayColumns.ID, 1252L);
-
-        storage.insertRow(GATEWAY_TABLE_NAME, record1252);
-
+    private void pushDummyGatewayIfNotExist() {
+        // switch 1
         final IPv4Address dummyIp126 = IPv4Address.of("192.168.126.1");
         final MacAddress dummyMac126 = MacAddress.of("08:00:27:1b:a2:7c");
 
@@ -193,6 +106,148 @@ public class GatewayStore implements GatewayStoreService, IFloodlightModule {
         record126.put(GatewayColumns.ID, 126L);
 
         storage.insertRow(GATEWAY_TABLE_NAME, record126);
+
+        final IPv4Address dummyIp1501 = IPv4Address.of("192.168.150.1");
+        final MacAddress dummyMac1501 = MacAddress.of("08:00:27:45:9a:46");
+
+        Map<String, Object> record1501 = Gateway.builder()
+                .setSwitchId("00:00:08:00:27:1b:a2:7c")
+                .setDevicePort(OFPort.of(5))
+                .setForwardingPort(OFPort.of(6))
+                .setIpAddress(dummyIp1501.toString())
+                .setNetMask("255.255.255.0")
+                .setMacAddress(dummyMac1501.toString())
+                .build()
+                .toRecord();
+
+        record1501.put(GatewayColumns.ID, 1501L);
+
+        storage.insertRow(GATEWAY_TABLE_NAME, record1501);
+
+        final IPv4Address dummyIp1511 = IPv4Address.of("192.168.151.1");
+        final MacAddress dummyMac1511 = MacAddress.of("08:00:27:60:f9:01");
+
+        Map<String, Object> record1511 = Gateway.builder()
+                .setSwitchId("00:00:08:00:27:1b:a2:7c")
+                .setDevicePort(OFPort.of(5))
+                .setForwardingPort(OFPort.of(4))
+                .setIpAddress(dummyIp1511.toString())
+                .setNetMask("255.255.255.0")
+                .setMacAddress(dummyMac1511.toString())
+                .build()
+                .toRecord();
+
+        record1511.put(GatewayColumns.ID, 1511L);
+
+        storage.insertRow(GATEWAY_TABLE_NAME, record1511);
+
+
+        // switch 2
+
+        final IPv4Address dummyIp124 = IPv4Address.of("192.168.124.1");
+        final MacAddress dummyMac124 = MacAddress.of("08:00:27:eb:3d:ce");
+
+        Map<String, Object> record124 = Gateway.builder()
+                .setSwitchId("00:00:08:00:27:99:00:34")
+                .setDevicePort(OFPort.of(3))
+                .setForwardingPort(OFPort.of(3))
+                .setIpAddress(dummyIp124.toString())
+                .setNetMask("255.255.255.0")
+                .setMacAddress(dummyMac124.toString())
+                .build()
+                .toRecord();
+
+        record124.put(GatewayColumns.ID, 124L);
+
+        storage.insertRow(GATEWAY_TABLE_NAME, record124);
+
+        final IPv4Address dummyIp1502 = IPv4Address.of("192.168.150.2");
+        final MacAddress dummyMac1502 = MacAddress.of("08:00:27:99:00:34");
+
+        Map<String, Object> record1502 = Gateway.builder()
+                .setSwitchId("00:00:08:00:27:99:00:34")
+                .setDevicePort(OFPort.of(3))
+                .setForwardingPort(OFPort.of(2))
+                .setIpAddress(dummyIp1502.toString())
+                .setNetMask("255.255.255.0")
+                .setMacAddress(dummyMac1502.toString())
+                .build()
+                .toRecord();
+
+        record1502.put(GatewayColumns.ID, 1502L);
+
+        storage.insertRow(GATEWAY_TABLE_NAME, record1502);
+
+        final IPv4Address dummyIp1521 = IPv4Address.of("192.168.152.1");
+        final MacAddress dummyMac1521 = MacAddress.of("08:00:27:ae:c7:8a");
+
+        Map<String, Object> record1521 = Gateway.builder()
+                .setSwitchId("00:00:08:00:27:99:00:34")
+                .setDevicePort(OFPort.of(3))
+                .setForwardingPort(OFPort.of(1))
+                .setIpAddress(dummyIp1521.toString())
+                .setNetMask("255.255.255.0")
+                .setMacAddress(dummyMac1521.toString())
+                .build()
+                .toRecord();
+
+        record1521.put(GatewayColumns.ID, 1521L);
+
+        storage.insertRow(GATEWAY_TABLE_NAME, record1521);
+
+
+        // switch 3
+
+        final IPv4Address dummyIp1231 = IPv4Address.of("192.168.123.1");
+        final MacAddress dummyMac1231 = MacAddress.of("08:00:27:68:05:8f");
+
+        Map<String, Object> record1231 = Gateway.builder()
+                .setSwitchId("00:00:08:00:27:42:41:8d")
+                .setDevicePort(OFPort.of(3))
+                .setForwardingPort(OFPort.of(3))
+                .setIpAddress(dummyIp1231.toString())
+                .setNetMask("255.255.255.0")
+                .setMacAddress(dummyMac1231.toString())
+                .build()
+                .toRecord();
+
+        record1231.put(GatewayColumns.ID, 1231L);
+
+        storage.insertRow(GATEWAY_TABLE_NAME, record1231);
+
+        final IPv4Address dummyIp1512 = IPv4Address.of("192.168.151.2");
+        final MacAddress dummyMac1512 = MacAddress.of("08:00:27:42:41:8d");
+
+        Map<String, Object> record1512 = Gateway.builder()
+                .setSwitchId("00:00:08:00:27:42:41:8d")
+                .setDevicePort(OFPort.of(3))
+                .setForwardingPort(OFPort.of(2))
+                .setIpAddress(dummyIp1512.toString())
+                .setNetMask("255.255.255.0")
+                .setMacAddress(dummyMac1512.toString())
+                .build()
+                .toRecord();
+
+        record1512.put(GatewayColumns.ID, 1512L);
+
+        storage.insertRow(GATEWAY_TABLE_NAME, record1512);
+
+        final IPv4Address dummyIp1522 = IPv4Address.of("192.168.152.2");
+        final MacAddress dummyMac1522 = MacAddress.of("08:00:27:49:ac:50");
+
+        Map<String, Object> record1522 = Gateway.builder()
+                .setSwitchId("00:00:08:00:27:42:41:8d")
+                .setDevicePort(OFPort.of(3))
+                .setForwardingPort(OFPort.of(1))
+                .setIpAddress(dummyIp1522.toString())
+                .setNetMask("255.255.255.0")
+                .setMacAddress(dummyMac1522.toString())
+                .build()
+                .toRecord();
+
+        record1522.put(GatewayColumns.ID, 1522L);
+
+        storage.insertRow(GATEWAY_TABLE_NAME, record1522);
     }
 
     @Override
