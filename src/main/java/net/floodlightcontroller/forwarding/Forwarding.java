@@ -268,11 +268,19 @@ public class Forwarding extends DefaultOFSwitchListener implements IFloodlightMo
             }
 
             /* Push the packet out the first hop switch */
+            OFPort newOutPort;
+            if (!routingData.isRoutedRequest()) {
+                newOutPort = outPort;
+            } else {
+                newOutPort = routingData.getOutputPort();
+            }
+            log.info("evaluated condition in forwarding: " + sw.getId().equals(pinSwitch));
             if (sw.getId().equals(pinSwitch) &&
                     !fmb.getCommand().equals(OFFlowModCommand.DELETE) &&
                     !fmb.getCommand().equals(OFFlowModCommand.DELETE_STRICT)) {
                 /* Use the buffered packet at the switch, if there's one stored */
-                pushPacket(sw, pi, outPort, true, cntx);
+                log.info("pushed packet after route push");
+                pushPacket(sw, pi, newOutPort, true, cntx);
                 packetOutSent = true;
             }
         }
