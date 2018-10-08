@@ -42,11 +42,25 @@ public class RouteStore implements RouteStoreService, IFloodlightModule {
 
     @Override
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
-        RoutingRule to124 = new RoutingRule(IPv4AddressWithMask.of(IPv4Address.of("192.168.126.1"), IPv4Address.of("255.255.255.0")), IPv4Address.of("192.168.125.2"));
-        RoutingRule to126 = new RoutingRule(IPv4AddressWithMask.of(IPv4Address.of("192.168.124.1"), IPv4Address.of("255.255.255.0")), IPv4Address.of("192.168.125.1"));
+        RoutingRule from126to123 = new RoutingRule(IPv4AddressWithMask.of(IPv4Address.of("192.168.123.1"), IPv4Address.of("255.255.255.0")), IPv4Address.of("192.168.151.2"));
+        RoutingRule from126to124 = new RoutingRule(IPv4AddressWithMask.of(IPv4Address.of("192.168.124.1"), IPv4Address.of("255.255.255.0")), IPv4Address.of("192.168.150.2"));
+        RoutingRule from124to123 = new RoutingRule(IPv4AddressWithMask.of(IPv4Address.of("192.168.123.1"), IPv4Address.of("255.255.255.0")), IPv4Address.of("192.168.152.2"));
+        RoutingRule from124to126 = new RoutingRule(IPv4AddressWithMask.of(IPv4Address.of("192.168.126.1"), IPv4Address.of("255.255.255.0")), IPv4Address.of("192.168.150.1"));
+        RoutingRule from123to124 = new RoutingRule(IPv4AddressWithMask.of(IPv4Address.of("192.168.124.1"), IPv4Address.of("255.255.255.0")), IPv4Address.of("192.168.152.1"));
+        RoutingRule from123to126 = new RoutingRule(IPv4AddressWithMask.of(IPv4Address.of("192.168.126.1"), IPv4Address.of("255.255.255.0")), IPv4Address.of("192.168.151.1"));
 
-        dummyRules.put(DatapathId.of("00:00:08:00:27:99:00:34"), Collections.singleton(to124));
-        dummyRules.put(DatapathId.of("00:00:08:00:27:1b:a2:7c"), Collections.singleton(to126));
+        dummyRules.put(DatapathId.of("00:00:08:00:27:1b:a2:7c"), new HashSet<>(Arrays.asList(
+                from126to123,
+                from126to124
+        )));
+        dummyRules.put(DatapathId.of("00:00:08:00:27:99:00:34"), new HashSet<>(Arrays.asList(
+                from124to123,
+                from124to126
+        )));
+        dummyRules.put(DatapathId.of("00:00:08:00:27:42:41:8d"), new HashSet<>(Arrays.asList(
+                from123to124,
+                from123to126
+        )));
     }
 
     @Override
